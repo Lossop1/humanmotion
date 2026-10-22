@@ -103,6 +103,7 @@ def time_params(n, mode, amp, r_in, r_out):
 
 def make(JA, JB, n, time_mode="shaped", arc_deg=0.0, root_mode="blend", foot="off", limb="rot"):
     """构造过渡帧。返回 (n, 22, 3)。"""
+    JB = align_pair(JA, JB)
     A, B = JA[-1], JB[0]
     dA, LA = dirs_len(A)
     dB, LB = dirs_len(B)
@@ -155,11 +156,70 @@ def make(JA, JB, n, time_mode="shaped", arc_deg=0.0, root_mode="blend", foot="of
                         d = rotate_about(d, side, math.radians(arc_deg) * math.sin(math.pi * uu))
             frames[i, c] = frames[i, p] + L[k] * d
     if limb == "ik":
-        frames = apply_limb_ik(frames, JA, JB, arc_deg=arc_deg)
+        # 约束混合：IK 解在两端与真实姿态不一致，直接替换会破坏首末帧的连续性。
+        # 所以两端权重 0、中间权重 1，混合两套关节位置，再按骨长重建。
+        base = frames.copy()
+        ikf = apply_limb_ik(frames.copy(), JA, JB, arc_deg=arc_deg)
+        # 混合的是「骨头方向」，不是关节位置。
+        # 位置线性混合会把所有关节拉向平均位置，骨架塌成一条线（实测过）。
+        n_fr = len(frames)
+        blended = np.array(base, dtype=np.float64, copy=True)
+        for i in range(n_fr):
+            w = math.sin(math.pi * (i + 1) / (n_fr + 1.0)) ** 2
+            db, _ = dirs_len(base[i])
+            di, _ = dirs_len(ikf[i])
+            for k, (c, p_) in enumerate(BONES):
+                d = db[k] * (1 - w) + di[k] * w
+                dn = float(np.linalg.norm(d))
+                d = d / dn if dn > 1e-9 else db[k]
+                blended[i, c] = blended[i, p_] + L[k] * d
+        frames = blended
     if foot in ("L", "R"):
         frames = plant_foot(frames, JA, JB, foot)
     return frames
 
+
+
+def rebuild_lengths(frames, L):
+    """按给定骨长重建每根骨头：方向保留，长度强制为 L。
+
+    混合两套关节位置之后，骨头会被拉长或压短。这一步把它拉回来。
+    骨头列表本身就是从根到末端的顺序，所以直接遍历即可。
+    """
+    out = np.array(frames, dtype=np.float64, copy=True)
+    n = len(out)
+    for i in range(n):
+        for k, (c, p) in enumerate(BONES):
+            v = out[i, c] - out[i, p]
+            nv = float(np.linalg.norm(v))
+            if nv < 1e-9:
+                continue
+            out[i, c] = out[i, p] + L[k] * (v / nv)
+    return out
+
+
+def align_pair(JA, JB):
+    """把 B 段整体转到与 A 末帧同朝向、并把骨盆平移到 A 末帧的位置。
+
+    两段是模型各自生成的，都从自己的原点、自己的朝向上开始。
+    不先对齐就用 B 的关节坐标，末端目标会落在腿够不到的地方，
+    逆运动学只能把腿折起来——之前骨架塌成一条线就是这个原因。
+    """
+    fA = body_forward(JA[-1])
+    fB = body_forward(JB[0])
+    # atan2(cross(fA,fB), dot) 给的是「从 A 转到 B」的角度，
+    # 要把 B 转到 A，必须用相反的角度。
+    ang = -math.atan2(float(np.cross(fA, fB)[1]), float(np.dot(fA, fB)))
+    c, sn = math.cos(ang), math.sin(ang)
+
+    piv = np.asarray(JB[0, 0], dtype=np.float64).copy()
+    out = np.array(JB, dtype=np.float64, copy=True)
+    for i in range(len(out)):
+        for k in range(22):
+            v = out[i, k] - piv
+            out[i, k] = piv + np.array([c * v[0] + sn * v[2], v[1], -sn * v[0] + c * v[2]])
+    out += (np.asarray(JA[-1, 0]) - piv)[None, None, :]
+    return out
 
 def main():
     ap = argparse.ArgumentParser()
@@ -182,7 +242,8 @@ def main():
     J = [to_joints.from_feats(np.load(run / ("feats_%d.npy" % s["id"]))) for s in segs]
 
     k = a.junction - 1
-    JA, JB = J[k], J[k + 1]
+    JA = J[k]
+    JB = align_pair(J[k], J[k + 1])
     fr = make(JA, JB, a.n, a.time, a.arc_deg, a.root, limb=a.limb)
 
     if a.tag:
@@ -342,8 +403,36 @@ def ik_chain(root_p, target, hint, l1, l2):
     return mid, end
 
 
-def apply_limb_ik(frames, JA, JB, arm=True, leg=True, arc_deg=0.0):
-    """把手臂和腿的末端改成笛卡尔直线（或拱起）轨迹，肘膝用 IK 解。"""
+def body_forward(Jf):
+    """身体当前的正面方向（水平投影）。
+
+    用两只脚从踝到脚尖的方向平均得到——过渡期间脚贴着地，这个方向最可靠。
+    退化时用两髋连线绕竖直轴转 90 度。
+    """
+    acc = np.zeros(3)
+    for ankle, toe in ((7, 10), (8, 11)):
+        v = np.asarray(Jf[toe]) - np.asarray(Jf[ankle])
+        v[1] = 0.0
+        nv = float(np.linalg.norm(v))
+        if nv > 1e-6:
+            acc += v / nv
+    n = float(np.linalg.norm(acc))
+    if n > 1e-6:
+        return acc / n
+    hips = np.asarray(Jf[2]) - np.asarray(Jf[1])
+    hips[1] = 0.0
+    f = np.cross(np.array([0.0, 1.0, 0.0]), hips)
+    nf = float(np.linalg.norm(f))
+    return f / nf if nf > 1e-6 else np.array([0.0, 0.0, 1.0])
+
+
+def apply_limb_ik(frames, JA, JB, arc_deg=0.0):
+    """手和脚的末端走笛卡尔轨迹，肘膝用逆运动学解。
+
+    中间关节（肘、膝）在圆上有一个自由度。这一版不混合 A/B 的关节位置，
+    而是按身体自身朝向定规则：膝朝身体正前方，肘朝身体后下方。
+    固定规则就不会在过渡中途翻到另一侧。
+    """
     dA, LA = dirs_len(JA[-1])
     dB, LB = dirs_len(JB[0])
     n = len(frames)
@@ -351,47 +440,42 @@ def apply_limb_ik(frames, JA, JB, arm=True, leg=True, arc_deg=0.0):
 
     def cart(i, jn):
         u = (i + 1) / (n + 1.0)
-        p0 = JA[-1, jn].copy()
-        p1 = JB[0, jn].copy()
-        p = p0 * (1 - u) + p1 * u
+        # 目标必须跟着根一起走：髋跟着骨盆的位移移动，而末端目标如果只在
+        # A、B 两端的绝对坐标之间插值，两边就不一致，逆运动学只能把腿弯起来
+        # 去够（实测膝盖弯到 103 度、肘弯到 132 度）。
+        # 所以把 A 端的末端位置加上根从起点算起的位移，再向 B 端插值。
+        shift = frames[i, 0] - JA[-1, 0]
+        p = (JA[-1, jn] + shift) * (1 - u) + JB[0, jn] * u
         if arc_deg > 0:
-            # 拱起：在中点抬高，两端为 0
-            p = p.copy()
-            p[1] += math.tan(math.radians(arc_deg)) * 0.25 * math.sin(math.pi * u) * np.linalg.norm(p1 - p0)
+            p[1] += math.tan(math.radians(arc_deg)) * 0.25 * math.sin(math.pi * u) \
+                * float(np.linalg.norm(JB[0, jn] - JA[-1, jn]))
         return p
 
     for i in range(n):
-        if leg:
-            for side, hip, knee, ankle, toe in (("L", 1, 4, 7, 10), ("R", 2, 5, 8, 11)):
-                l1 = float(L[1] if side == "L" else L[5])
-                l2 = float(L[2] if side == "L" else L[6])
-                lf = float(L[3] if side == "L" else L[7])
-                tgt = cart(i, ankle)
-                # 中间关节的朝向参考必须从 A 的关节位置过渡到 B 的，
-                # 否则首帧的 IK 解与 A 的真实姿态不一致，一上来就跳。
-                u_ = (i + 1) / (n + 1.0)
-                hint = JA[-1, knee] * (1 - u_) + JB[0, knee] * u_
-                mid, end = ik_chain(frames[i, hip], tgt, hint, l1, l2)
-                frames[i, knee] = mid
-                frames[i, ankle] = end
-                fd = dB[3 if side == "L" else 7]
-                frames[i, toe] = end + lf * fd
-        if arm:
-            for side in ("L", "R"):
-                cfg = ARMS[side]
-                up, lo, hand = cfg["up"], cfg["lo"], cfg["hand"]
-                l1, l2, lh = float(L[up]), float(L[lo]), float(L[hand])
-                sh, el, wr, hd = cfg["chain"][1], cfg["chain"][2], cfg["chain"][3], cfg["chain"][4]
-                tgt = cart(i, wr)
-                u_ = (i + 1) / (n + 1.0)
-                hint = JA[-1, el] * (1 - u_) + JB[0, el] * u_
-                mid, end = ik_chain(frames[i, sh], tgt, hint, l1, l2)
-                frames[i, el] = mid
-                frames[i, wr] = end
-                fd = dB[hand]
-                frames[i, hd] = end + lh * fd
+        u = (i + 1) / (n + 1.0)
+        fwd = body_forward(frames[i])
+        down = np.array([0.0, -1.0, 0.0])
+
+        for hip, knee, ankle, toe, bu in ((1, 4, 7, 10, 1), (2, 5, 8, 11, 5)):
+            l1, l2, lf = float(L[bu]), float(L[bu + 1]), float(L[bu + 2])
+            tgt = cart(i, ankle)
+            mid, end = ik_chain(frames[i, hip], tgt, frames[i, hip] + 0.3 * fwd, l1, l2)
+            frames[i, knee] = mid
+            frames[i, ankle] = end
+            fd = dA[bu + 2] * (1 - u) + dB[bu + 2] * u
+            fd = fd / max(float(np.linalg.norm(fd)), 1e-9)
+            frames[i, toe] = end + lf * fd
+
+        # 22 个关节的布局：13/14 锁骨，16/17 肩，18/19 肘，20/21 腕。
+        # 之前把 13 当肩、16 当肘，整条链少了一节，解出来的手臂是错的。
+        for sh, el, wr, bu in ((16, 18, 20, 15), (17, 19, 21, 19)):
+            l1, l2 = float(L[bu]), float(L[bu + 1])
+            tgt = cart(i, wr)
+            hint = frames[i, sh] - 0.3 * fwd + 0.15 * down
+            mid, end = ik_chain(frames[i, sh], tgt, hint, l1, l2)
+            frames[i, el] = mid
+            frames[i, wr] = end
+
     return frames
-
-
 if __name__ == "__main__":
     main()
