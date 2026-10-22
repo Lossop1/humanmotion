@@ -1,0 +1,230 @@
+"""语言处理的唯一入口：一句中文 → 段落、英文提示词、帧数、过渡、地形。
+
+设计约束
+--------
+不存在任何「动作名 → 英文提示词」的映射表，也没有动作白名单。
+分段、翻译、帧数、过渡时长、地形，全部由 LLM 一次给出。
+代码只做数值上的物理约束，不做语言判断。
+"""
+import json
+import os
+import re
+import time
+import urllib.request
+
+from hm import config
+
+API = "https://api.deepseek.com/chat/completions"
+
+SYSTEM = """你是人体动作分镜器。给你一句中文描述，输出一段可以直接交给动作生成模型的英文分镜。
+
+只输出 JSON，不要解释。
+
+## 第一部分：段落
+把句子拆成按时间排列的动作段。
+1 一句话有几个先后发生的动作就拆几段，一段只描述一个连续动作。
+2 如果两个动作同时发生（例如「一边走一边挥手」），合并成一段，不要拆。
+3 每段给三个字段：
+   label   中文动作名，只用于日志，可以自由写
+   prompt  英文提示词，直接交给生成模型
+   frames  这段占多少帧（20 帧 = 1 秒）
+
+## prompt 的写法
+生成模型只懂英文，而且它看不到整句，只看到你给的这一句。所以每一条都要自足：
+1 一律以 "a person" 或 "the person" 开头。
+2 必须交代方向：forward / backward / to the left / to the right / in place /
+  in a circle。不写方向的运动类动作，模型经常原地不动或自己乱拐。
+3 时态整段一致，一般现在时或现在进行时都可以。
+4 一条只写一个动作，不要写 "and then"。
+5 控制在 12 个词以内。
+6 用常见动词：walk, run, jump, turn, sit, stand, wave, bend, pick, kick,
+  dance, climb, crawl, throw, punch。生僻词模型没见过，表现不可控。
+7 例子：
+   "a person waves goodbye with the right hand"
+   "a person walks forward slowly"
+   "a person turns around in place"
+   "a person runs forward fast"
+
+## frames
+20 帧 = 1 秒。参考范围：
+  站立、挥手、点头        30–45
+  转身、弯腰、蹲下        30–45
+  走、跑、爬              45–70
+  坐下、躺下、起身        45–60
+动作越复杂给得越长，但不超过 80。
+
+## 第二部分：过渡
+每两个相邻段落之间指定一段过渡，两个字段：
+   duration_s  过渡占多少秒，0.15–1.20
+   ease        取 linear / ease_in_out / ease_out 之一
+               两侧都慢用 linear；一快一慢用 ease_in_out；收尾要缓用 ease_out
+参考：快接快 0.2–0.3 秒；慢接慢 0.5–0.8 秒；快接慢 0.4–0.6 秒。
+
+## 第三部分：地形
+整句描述里有高度变化（上台阶、下台阶、上坡、下坡、从高处跳下）才给地面高度，
+否则一律为 0。
+   start_y   第一段开始时地面高度（米）。下楼从高处开始就给正数。
+   profile   每段开始时的地面高度，格式 [{"at_segment": 1, "y": 0.0}, ...]
+原句没提地形就不要凭空造。
+
+## 输出格式
+{
+  "segments": [
+    {"label": "挥手打招呼", "prompt": "a person waves goodbye with the right hand", "frames": 40},
+    {"label": "转身", "prompt": "a person turns around in place", "frames": 40}
+  ],
+  "transitions": [
+    {"junction": 1, "duration_s": 0.4, "ease": "ease_in_out"}
+  ],
+  "terrain": {"start_y": 0.0, "profile": [{"at_segment": 1, "y": 0.0}, {"at_segment": 2, "y": 0.0}]}
+}
+"""
+
+
+def _key():
+    for p in (config.ROOT / ".deepseek_key", config.DEPS / ".deepseek_key"):
+        if p.exists():
+            t = p.read_text(encoding="utf-8").strip()
+            if t:
+                return t
+    return os.environ.get("DEEPSEEK_API_KEY", "").strip()
+
+
+def _call(system, user, tries=3):
+    key = _key()
+    if not key:
+        raise RuntimeError("没有 API key：找不到 .deepseek_key，也没设 DEEPSEEK_API_KEY")
+    body = json.dumps({
+        "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-flash"),
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": 0.2,
+    }).encode("utf-8")
+    last = None
+    for k in range(tries):
+        req = urllib.request.Request(API, data=body, headers={
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + key,
+        })
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                txt = json.loads(r.read().decode("utf-8"))["choices"][0]["message"]["content"]
+            if txt and txt.strip():
+                return txt
+            last = "空回复"
+        except Exception as e:
+            last = str(e)
+        time.sleep(1.5 * (k + 1))
+    raise RuntimeError("LLM 调用失败：%s" % last)
+
+
+def _parse(txt):
+    """从回复里取出 JSON，允许 ```json 围栏。"""
+    m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", txt, re.S)
+    if m:
+        return json.loads(m.group(1))
+    i, j = txt.find("{"), txt.rfind("}")
+    if i >= 0 and j > i:
+        return json.loads(txt[i:j + 1])
+    raise ValueError("回复里没有 JSON：%s" % txt[:200])
+
+
+def plan(sentence):
+    """一句中文 → (段落列表, 过渡列表, 地形)。
+
+    段落每项 {label, prompt, frames}；过渡每项 {junction, duration_s, ease}。
+    """
+    data = _parse(_call(SYSTEM, "描述：%s\n\n请输出 JSON。" % sentence))
+
+    segs = []
+    for s in data.get("segments") or []:
+        prompt = str(s.get("prompt", "")).strip()
+        if not prompt:
+            raise ValueError("有一个段落没有英文提示词：%s" % s)
+        frames = int(s.get("frames") or 40)
+        segs.append({
+            "label": str(s.get("label", "")).strip() or prompt,
+            "prompt": prompt,
+            "frames": max(20, min(90, frames)),
+        })
+    if not segs:
+        raise ValueError("LLM 没有给出任何段落")
+
+    trans = []
+    for t in data.get("transitions") or []:
+        try:
+            j = int(t.get("junction"))
+        except (TypeError, ValueError):
+            continue
+        try:
+            d = float(t.get("duration_s", 0.4))
+        except (TypeError, ValueError):
+            d = 0.4
+        ease = str(t.get("ease", "ease_in_out"))
+        if ease not in ("linear", "ease_in_out", "ease_out"):
+            ease = "ease_in_out"
+        trans.append({"junction": j, "duration_s": max(0.15, min(1.20, d)), "ease": ease})
+
+    terrain = data.get("terrain") or {"start_y": 0.0, "profile": []}
+    if not isinstance(terrain.get("profile"), list):
+        terrain["profile"] = []
+    return segs, trans, terrain
+
+
+TERRAIN_SYSTEM = """你在判断一段动画里地面是什么形状。
+
+你会拿到两部分信息：
+ 1 用户的原句，以及从原句拆出来的动作段
+ 2 模型实际生成出来的每段动作的竖直剖面
+
+第二部分给每段的：根高起点、根高终点、净变化、振荡幅度、水平路径长度，
+以及一个判断。判断为「单调升降」表示这段在持续地升高或降低，像在走楼梯或坡道。
+判断为「上下振荡」表示这段在原地起伏、净位移接近零，像跑跳的正常弹跳。
+
+你要决定每段**地面高度**，让动作和世界一致。规则：
+
+如果一段是「上下振荡」，地面高度不变。那是原地弹跳，不是地形。
+如果一段是「单调升降」，有两种处理，你必须选一个并说明理由：
+  A 承认它是地形。地面高度跟着变化，人从高处开始往下走。
+     条件：原句里有台阶、楼梯、坡、上下楼这些词。
+  B 判定它是模型幻觉。地面高度不变，把升降压平。
+     条件：原句描述的是平地上的简单动作，模型却生成了大幅升降。
+
+地面高度的变化量不能超过「水平路径长度 × 0.6」，否则渲出来是滑梯不是楼梯。
+每段的这个上限都会告诉你。
+
+只输出 JSON：
+{"terrain":{"start_y":0.0,"profile":[{"at_segment":1,"y":0.0}]},
+ "notes":[{"segment":1,"decision":"A|B|keep","why":"一句话理由"}]}
+
+start_y 是第一段开始时的地面高度（米）。
+profile 里 {"at_segment": k, "y": h} 的意思是「段 k 开始那一刻地面高度是 h」，
+段内地面从本段的值线性走到下一段的值。所以下降要写在【发生下降的那一段】的起点上。
+"""
+
+
+def terrain_decision(sentence, labels, profiles):
+    """第二次调用：把实测竖直剖面交给 LLM，决定地面高度。"""
+    lines = []
+    for p in profiles:
+        kind = "单调升降（像地形）" if p.get("monotone") else "上下振荡（像弹跳）"
+        lines.append(
+            "段%d %s：根高 %.3f → %.3f 米，净变化 %+.3f 米，振荡 %.3f 米，判为%s；"
+            "水平路径 %.2f 米，最多只能落差 %.2f 米" % (
+                p["segment"], p["action"], p["start_y"], p["end_y"],
+                p["net"], p["osc"], kind, p.get("horiz_m", 0.0), p.get("max_drop", 0.0)))
+    user = "原句：%s\n\n动作段：%s\n\n模型生成的竖直剖面：\n%s\n\n请输出 JSON。" % (
+        sentence, ", ".join(labels), "\n".join(lines))
+    data = _parse(_call(TERRAIN_SYSTEM, user))
+    terr = data.get("terrain") or {"start_y": 0.0, "profile": []}
+    notes = data.get("notes") or []
+    if not isinstance(terr.get("profile"), list):
+        terr["profile"] = []
+    return terr, notes
+
+
+# main 的旧接口
+def plan_full(sentence):
+    return plan(sentence)

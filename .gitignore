@@ -1,0 +1,20 @@
+# 产物：体积大，可重跑
+runs/
+real40/
+real_samples/
+*.tgz
+
+# 依赖与模型：不属于本项目源码
+datasets/
+models/
+assets/
+deps/
+blender-4.5.0-linux-x64/
+momask-torch/
+mdm/
+motius/
+motion-agent/
+
+# 缓存
+__pycache__/
+*.pyc
