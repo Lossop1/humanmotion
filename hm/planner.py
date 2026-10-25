@@ -37,8 +37,10 @@ SYSTEM = """你是人体动作分镜器。给你一句中文描述，输出一�
 3 时态整段一致，一般现在时或现在进行时都可以。
 4 一条只写一个动作，不要写 "and then"。
 5 控制在 12 个词以内。
-6 用常见动词：walk, run, jump, turn, sit, stand, wave, bend, pick, kick,
-  dance, climb, crawl, throw, punch。生僻词模型没见过，表现不可控。
+6 用常见动词，例如 walk, run, jump, turn, sit, stand, wave, bend, pick, kick,
+    dance, climb, crawl, throw, punch, kneel, crouch, point, salute, shrug,
+    push, pull, squat, hop, sprint, sidestep。以上只是示例，其他常见动作词同样可用；
+    生僻词模型没见过，表现不可控。
 7 例子：
    "a person waves goodbye with the right hand"
    "a person walks forward slowly"
