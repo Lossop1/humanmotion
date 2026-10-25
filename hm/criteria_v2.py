@@ -1,0 +1,91 @@
+"""判据 v2：由 96 段人工标注校准出来的硬检查。
+
+阈值来源：outputs/_reference/criteria_v2.json
+    骨长均值相对偏差 > 0.103            → 几何失败
+    髋线定的骨盆朝向与脚尖方向存在反向帧 → 几何失败（这是「反关节扭转」的实际表现）
+    在 84 段二分类样本上：灵敏度 0.95、特异度 0.89、平衡准确率 0.92
+
+说明：反向帧判据用关节直接算（髋线 vs 脚尖），不需要 SMPL 拟合，
+      因此可以放在解码之后、装配之前。
+"""
+import json
+from pathlib import Path
+
+import numpy as np
+
+from hm import job as jobmod
+from hm import pose_rules
+
+REF_DIR = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
+VERSION = "criteria_v2"
+
+
+def load():
+    p = REF_DIR / ("%s.json" % VERSION)
+    if p.exists():
+        return json.loads(p.read_text(encoding="utf-8"))
+    return {"bone_th": 0.103, "rev_th": 0.0, "sens": 0.95, "spec": 0.89, "bal": 0.92}
+
+
+def hip_vs_toe(J):
+    """返回 (反向帧占比, 最小点积)。"""
+    dots = []
+    for t in range(len(J)):
+        hips = J[t, 2] - J[t, 1]
+        hips[1] = 0.0
+        p = np.cross(np.array([0.0, 1.0, 0.0]), hips)
+        acc = np.zeros(3)
+        for a, b in ((7, 10), (8, 11)):
+            v = J[t, b] - J[t, a]
+            v[1] = 0.0
+            n = np.linalg.norm(v)
+            if n > 1e-6:
+                acc += v / n
+        np_, nt = np.linalg.norm(p[[0, 2]]), np.linalg.norm(acc[[0, 2]])
+        if np_ < 1e-6 or nt < 1e-6:
+            continue
+        dots.append(float(np.dot(p[[0, 2]] / np_, acc[[0, 2]] / nt)))
+    d = np.array(dots) if dots else np.array([1.0])
+    return float((d < 0).mean()), float(d.min())
+
+
+def check(J, action_text="", ref=None, pose_th=None):
+    """返回 (passed, hard, metrics, reasons)。"""
+    crit = load()
+    if ref is None:
+        ref = jobmod.load_bone_reference()
+    reasons = []
+    hard = {"finite": bool(np.isfinite(J).all()),
+            "shape": bool(J.ndim == 3 and J.shape[1] == 22 and J.shape[2] == 3)}
+    metrics = {}
+    if not (hard["finite"] and hard["shape"]):
+        return False, hard, metrics, ["非有限值或形状错误"]
+
+    L = jobmod.bone_lengths(J)
+    mean = np.array(ref["mean"])
+    rel = float((np.abs(L.mean(0) - mean) / np.maximum(mean, 1e-9)).max())
+    metrics["bone_rel_mean_max"] = rel
+    metrics["bone_jitter_m"] = float(L.std(0).max())
+    hard["bone_length"] = rel <= crit["bone_th"]
+    if not hard["bone_length"]:
+        reasons.append("骨长均值偏差 %.1f%% 超过 %.1f%%"
+                       % (100 * rel, 100 * crit["bone_th"]))
+
+    rev_frac, rev_min = hip_vs_toe(J)
+    metrics["rev_frac"] = rev_frac
+    metrics["rev_min"] = rev_min
+    hard["root_facing"] = rev_frac <= crit["rev_th"]
+    if not hard["root_facing"]:
+        reasons.append("骨盆朝向与脚尖反向（%.0f%% 的帧，最小点积 %.2f）"
+                       % (100 * rev_frac, rev_min))
+
+    pose_ok, pose_reasons, bad, values = pose_rules.check(J, action_text, pose_th)
+    hard["pose_rules"] = pose_ok
+    metrics["pose_values"] = values
+    if not pose_ok:
+        reasons.extend(pose_reasons)
+
+    metrics["thresholds"] = {"bone_th": crit["bone_th"], "rev_th": crit["rev_th"],
+                             "source": VERSION}
+    passed = all(bool(v) for v in hard.values())
+    return passed, hard, metrics, reasons

@@ -76,6 +76,8 @@ def build_bone_reference(pattern="real40/*.npy", out_dir=None):
         "bone_names": BONE_NAMES,
         "tolerance_sigma": 3.0,
         "relative_tolerance": 0.05,
+        "corruption_tolerance": 0.20,
+        "relative_tolerance_note": "5% 是质量偏好（软指标）；20% 才是硬失败阈值。第一轮能力测试 96 个样本的分布：P50=6.3%、P90=16.5%、最大 50.5%，5% 会误杀 60% 的正常样本，15% 又让蹲坐躺全部通过，因此硬阈值只用来抓损坏",
         "note": "40 条真实动捕的骨长标准差约等于 0（同一套骨架重定向），sigma 判据退化，因此改用相对偏差 5% 作为容许带",
         "created": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
