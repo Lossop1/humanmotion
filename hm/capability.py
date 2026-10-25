@@ -21,28 +21,12 @@ import numpy as np
 from hm import config, generate, job as jobmod, pose_rules, repair, to_joints
 
 # 动作类别表：(类别键, 中文, 英文提示词, 关键词, 帧数)
-ACTIONS = [
-    ("wave_hello", "挥手打招呼", "a person waves hello with the right hand", ("wave", "挥手"), 40),
-    ("wave_goodbye", "挥手告别", "a person waves goodbye", ("goodbye", "告别"), 40),
-    ("clap", "鼓掌", "a person claps their hands", ("clap", "鼓掌"), 40),
-    ("walk", "向前走", "a person walks forward", ("walk", "走"), 52),
-    ("walk_back", "后退", "a person walks backward", ("backward", "后退"), 48),
-    ("run", "跑", "a person runs forward", ("run", "跑"), 40),
-    ("turn", "转身", "a person turns around", ("turn", "转身"), 40),
-    ("stand", "站住", "a person stands still", ("stand", "站"), 40),
-    ("jump", "跳", "a person jumps up", ("jump", "跳"), 36),
-    ("kick", "踢腿", "a person kicks with the right leg", ("kick", "踢"), 36),
-    ("bow", "鞠躬", "a person bows", ("bow", "鞠躬"), 40),
-    ("raise_hands", "举手", "a person raises both hands", ("raise", "举手"), 36),
-    ("crouch", "蹲下", "a person crouches down", ("crouch", "蹲"), 40),
-    ("sit", "坐下", "a person sits down on a chair", ("sit", "坐"), 40),
-    ("lie", "躺下", "a person lies down on the floor", ("lie", "躺"), 44),
-    ("throw", "投掷", "a person throws a ball", ("throw", "投掷"), 36),
-]
+from hm.actions import ACTIONS_ALL
+ACTIONS = [(a[0], a[1], a[2], (a[2].split()[1:4]), a[3]) for a in ACTIONS_ALL]
 
 SUPPORT_TH = 0.75      # 通过率 ≥ 此值记为支持
 APPROX_TH = 0.40       # 介于两线之间记为可近似
-TABLE_VERSION = "capability_v1"
+TABLE_VERSION = "capability_v3full"
 REF_DIR = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
 
 
@@ -84,15 +68,14 @@ def run_test(models, k, bone_ref, pose_th):
                 L = jobmod.bone_lengths(J)
                 Lm = L.mean(axis=0)
                 rel_max = float((np.abs(Lm - mean) / np.maximum(mean, 1e-9)).max())
-                bone_ok = rel_max <= float(bone_ref.get("corruption_tolerance", 0.20))
-                pose_ok, reasons, _, _ = pose_rules.check(J, prompt, pose_th)
-                sem_ok, sem_rule, sem_detail = repair.semantic_proxy(J, prompt)
-                sem_ok = True if sem_ok is None else bool(sem_ok)
-                passed = bool(bone_ok and pose_ok and sem_ok)
+                from hm import criteria_v2 as _cv
+                ok_v3, hard3, met3, why3 = _cv.check(J, prompt, bone_ref, pose_th)
+                passed = bool(ok_v3)
+                reasons = why3
                 ok += int(passed)
                 details.append({"pass": passed, "bone_rel": round(rel_max, 4),
-                                "pose_ok": pose_ok, "sem_ok": sem_ok,
-                                "sem_rule": sem_rule, "why": reasons[:1]})
+                                "hard": {k: bool(v) for k, v in hard3.items()},
+                                "why": reasons[:2]})
             rate = ok / max(len(feats), 1)
             rows.append({"action": key, "action_zh": zh, "prompt": prompt, "model": model,
                          "samples": len(feats), "passed": ok, "pass_rate": round(rate, 3),
