@@ -175,6 +175,12 @@ def step_a08_a10(job, sb, ref):
             reasons = {}
 
             if hard["finite"] and hard["shape"]:
+                # 判据 v3：骨长 10.3% / 反向帧 / 穿模近似，由 96 段人工标注校准
+                from hm import criteria_v2 as _crit
+                ok, h2, m2, why2 = _crit.check(J, seg.get("text_gen_final", ""), ref, None)
+                hard.update(h2)
+                metrics.update({k: v for k, v in m2.items() if k not in metrics})
+                failures.extend(why2)
                 L = jobmod.bone_lengths(J)
                 # 逐帧抖动：263→22 的还原不是刚性的，单帧骨长会在均值附近晃。
                 # 这一项单独记为软指标，不当硬失败——硬检查针对的是系统性偏差。
@@ -192,8 +198,8 @@ def step_a08_a10(job, sb, ref):
                         "bone_length_jitter_m": 0.02,
                         "bone_length_jitter_source": "暂定值，待测试集校准后固定",
                     }
-                    hard["bone_length"] = bool(rel_mean.max() <= tol)
-                    if not hard["bone_length"]:
+                    hard["bone_length_legacy"] = bool(rel_mean.max() <= tol)
+                    if not hard["bone_length_legacy"]:
                         k = int(np.argmax(rel_mean))
                         failures.append("骨长均值相对偏差 %.1f%% 超出容差 %.0f%%（%s）"
                                         % (100 * rel_mean.max(), 100 * tol, jobmod.BONE_NAMES[k]))
@@ -218,7 +224,8 @@ def step_a08_a10(job, sb, ref):
             reasons["float"] = "Float 指标未接入运行环境，未计算"
             reasons["mm_dist_original_text"] = "语义评测器未接入，未计算"
 
-            passed = all(v is True for v in hard.values() if v is not None)
+            keys_v3 = ("finite", "shape", "bone_length", "root_facing", "separation")
+            passed = all(hard.get(k) is True for k in keys_v3 if hard.get(k) is not None)
             m = {
                 "job_id": job.job_id,
                 "segment_id": seg["segment_id"],

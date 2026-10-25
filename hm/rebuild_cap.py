@@ -58,17 +58,17 @@ def main():
         v["status"] = best[1]["status"]
 
     doc = {
-        "version": "capability_v2",
+        "version": "capability_v3",
         "created": __import__("time").strftime("%Y-%m-%d %H:%M:%S"),
-        "criteria": "criteria_v2（骨长>10.3% 或 反向帧>0 判失败；阈值由 96 段人工标注校准）",
+        "criteria": "criteria_v3（骨长>10.3% 或 反向帧>0 或 非相邻关节间距<0.045 判失败；灵敏度 1.00 / 特异度 0.89，由 96 段人工标注校准）",
         "thresholds": {"supported": SUPPORT_TH, "approximate": APPROX_TH},
         "table": table, "raw": rows,
     }
-    p = REF / "capability_v2.json"
+    p = REF / "capability_v3.json"
     p.write_text(json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
 
-    old = json.loads((REF / "capability_v1.json").read_text(encoding="utf-8"))["table"] \
-        if (REF / "capability_v1.json").exists() else None
+    old = json.loads((REF / "capability_v2.json").read_text(encoding="utf-8"))["table"] \
+        if (REF / "capability_v2.json").exists() else None
     print("\n  %-12s %-22s %-22s" % ("动作", "旧判据（骨长5%/包络）", "新判据（骨长10.3%/反向帧）"))
     for k, v in table.items():
         o = old.get(k) if old else None

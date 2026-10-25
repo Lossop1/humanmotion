@@ -17,14 +17,15 @@ from hm import job as jobmod
 from hm import pose_rules
 
 REF_DIR = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
-VERSION = "criteria_v2"
+VERSION = "criteria_v3"
 
 
 def load():
     p = REF_DIR / ("%s.json" % VERSION)
     if p.exists():
         return json.loads(p.read_text(encoding="utf-8"))
-    return {"bone_th": 0.103, "rev_th": 0.0, "sens": 0.95, "spec": 0.89, "bal": 0.92}
+    return {"bone_th": 0.103, "rev_th": 0.0, "sep_th": 0.045,
+            "sens": 1.00, "spec": 0.89, "bal": 0.95}
 
 
 def hip_vs_toe(J):
@@ -47,6 +48,19 @@ def hip_vs_toe(J):
         dots.append(float(np.dot(p[[0, 2]] / np_, acc[[0, 2]] / nt)))
     d = np.array(dots) if dots else np.array([1.0])
     return float((d < 0).mean()), float(d.min())
+
+
+def min_separation(J):
+    """非相邻关节（序号差 >= 3）的最小距离，身体折叠到内部时会很小。"""
+    best = 9.0
+    for t in range(len(J)):
+        p = J[t]
+        for a in range(22):
+            for b in range(a + 3, 22):
+                d = float(np.linalg.norm(p[a] - p[b]))
+                if d < best:
+                    best = d
+    return best
 
 
 def check(J, action_text="", ref=None, pose_th=None):
@@ -79,6 +93,13 @@ def check(J, action_text="", ref=None, pose_th=None):
         reasons.append("骨盆朝向与脚尖反向（%.0f%% 的帧，最小点积 %.2f）"
                        % (100 * rev_frac, rev_min))
 
+    sep = min_separation(J)
+    metrics["min_separation_m"] = sep
+    hard["separation"] = sep >= crit.get("sep_th", 0.045)
+    if not hard["separation"]:
+        reasons.append("非相邻关节最小间距 %.3f 米，疑似穿模（阈值 %.3f）"
+                       % (sep, crit.get("sep_th", 0.045)))
+
     pose_ok, pose_reasons, bad, values = pose_rules.check(J, action_text, pose_th)
     hard["pose_rules"] = pose_ok
     metrics["pose_values"] = values
@@ -86,6 +107,6 @@ def check(J, action_text="", ref=None, pose_th=None):
         reasons.extend(pose_reasons)
 
     metrics["thresholds"] = {"bone_th": crit["bone_th"], "rev_th": crit["rev_th"],
-                             "source": VERSION}
+                             "sep_th": crit.get("sep_th", 0.045), "source": VERSION}
     passed = all(bool(v) for v in hard.values())
     return passed, hard, metrics, reasons
