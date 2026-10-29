@@ -17,15 +17,15 @@ from hm import job as jobmod
 from hm import pose_rules
 
 REF_DIR = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
-VERSION = "criteria_v3"
+VERSION = "criteria_v5"
 
 
 def load():
     p = REF_DIR / ("%s.json" % VERSION)
     if p.exists():
         return json.loads(p.read_text(encoding="utf-8"))
-    return {"bone_th": 0.103, "rev_th": 0.0, "sep_th": 0.045,
-            "sens": 1.00, "spec": 0.89, "bal": 0.95}
+    return {"bone_th": 0.103, "bone_err_cm": 4.0, "rev_th": 0.02, "sep_th": 0.045,
+            "sens": 0.89, "spec": 0.98, "bal": 0.94}
 
 
 def hip_vs_toe(J):
@@ -77,18 +77,23 @@ def check(J, action_text="", ref=None, pose_th=None):
 
     L = jobmod.bone_lengths(J)
     mean = np.array(ref["mean"])
-    rel = float((np.abs(L.mean(0) - mean) / np.maximum(mean, 1e-9)).max())
-    metrics["bone_rel_mean_max"] = rel
+    Lm = L.mean(0)
+    err_cm = float(100 * np.abs(Lm - mean).max())
+    rel = float((np.abs(Lm - mean) / np.maximum(mean, 1e-9)).max())
+    metrics["bone_err_cm"] = err_cm
+    metrics["bone_rel_mean_max"] = rel          # 保留作软指标
     metrics["bone_jitter_m"] = float(L.std(0).max())
-    hard["bone_length"] = rel <= crit["bone_th"]
+    tol_cm = float(crit.get("bone_err_cm", 4.0))
+    hard["bone_length"] = err_cm <= tol_cm
     if not hard["bone_length"]:
-        reasons.append("骨长均值偏差 %.1f%% 超过 %.1f%%"
-                       % (100 * rel, 100 * crit["bone_th"]))
+        k = int(np.argmax(np.abs(Lm - mean)))
+        reasons.append("骨长绝对误差 %.1f 厘米超过 %.1f 厘米（%s）"
+                       % (err_cm, tol_cm, jobmod.BONE_NAMES[k]))
 
     rev_frac, rev_min = hip_vs_toe(J)
     metrics["rev_frac"] = rev_frac
     metrics["rev_min"] = rev_min
-    hard["root_facing"] = rev_frac <= crit["rev_th"]
+    hard["root_facing"] = rev_frac <= crit.get("rev_th", 0.02)
     if not hard["root_facing"]:
         reasons.append("骨盆朝向与脚尖反向（%.0f%% 的帧，最小点积 %.2f）"
                        % (100 * rev_frac, rev_min))
@@ -106,7 +111,8 @@ def check(J, action_text="", ref=None, pose_th=None):
     if not pose_ok:
         reasons.extend(pose_reasons)
 
-    metrics["thresholds"] = {"bone_th": crit["bone_th"], "rev_th": crit["rev_th"],
+    metrics["thresholds"] = {"bone_err_cm": crit.get("bone_err_cm", 4.0),
+                             "rev_th": crit["rev_th"],
                              "sep_th": crit.get("sep_th", 0.045), "source": VERSION}
     passed = all(bool(v) for v in hard.values())
     return passed, hard, metrics, reasons

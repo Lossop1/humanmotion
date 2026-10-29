@@ -208,9 +208,8 @@ def main():
         print("  任务目录：%s" % job.dir)
         return
 
-    seq, bj = finish_job.step_a16(job, sb)
-    V, P, stats = finish_job.step_a17(job, seq)
-    mp4 = finish_job.step_a18(job, seq, bj)
+    from hm import assemble_params as AP
+    mp4, bj = AP.run(job, sb)
     print("\n  A01–A18 全部走完")
     print("  合体视频：%s" % mp4)
     print("  任务目录：%s" % job.dir)
