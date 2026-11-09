@@ -77,7 +77,32 @@ def _load_smpl(device="cpu"):
                         flat_hand_mean=False).to(device)
 
 
-def fit(joints, batch_size=16, iters=20, device=None):
+_SMPL_CACHE = {}
+
+
+def _get_smplify(device, iters, batch_size):
+    """缓存 SMPL 模型与 SMPLify 实例，避免每次拟合都重新加载。"""
+    key = (str(device), int(iters), int(batch_size))
+    if key in _SMPL_CACHE:
+        return _SMPL_CACHE[key]
+    import pickle as _pk
+    from smplify import SMPLify3D
+
+    model = _load_smpl(device)
+    orig_load, orig_unpickler = _pk.load, _pk.Unpickler
+    _pk.Unpickler = _CRLFUnpickler
+    _pk.load = lambda f, **kw: _CRLFUnpickler(f, **kw).load()
+    try:
+        smplify = SMPLify3D(smplxmodel=model, batch_size=batch_size, num_iters=iters,
+                            use_collision=False, joints_category="AMASS",
+                            device=device)
+    finally:
+        _pk.load, _pk.Unpickler = orig_load, orig_unpickler
+    _SMPL_CACHE[key] = (model, smplify)
+    return model, smplify
+
+
+def fit(joints, batch_size=32, iters=8, device=None):
     """(T,22,3) → (T,6890,3)。
 
     joints 是米为单位、y 轴向上。
@@ -88,18 +113,7 @@ def fit(joints, batch_size=16, iters=20, device=None):
 
     from smplify import SMPLify3D
 
-    model = _load_smpl(device)
-
-    # 构造期间替换 pickle.load，让 GMM 能被读进来
-    orig_load, orig_unpickler = pickle.load, pickle.Unpickler
-    pickle.Unpickler = _CRLFUnpickler
-    pickle.load = lambda f, **kw: _CRLFUnpickler(f, **kw).load()
-    try:
-        smplify = SMPLify3D(smplxmodel=model, batch_size=batch_size, num_iters=iters,
-                            use_collision=False, joints_category="AMASS",
-                            device=device)
-    finally:
-        pickle.load, pickle.Unpickler = orig_load, orig_unpickler
+    model, smplify = _get_smplify(device, iters, batch_size)
 
     mean_pose = np.load(MEAN_POSE) if MEAN_POSE.exists() else np.zeros(72, np.float32)
     mean_shape = np.load(MEAN_SHAPE) if MEAN_SHAPE.exists() else np.zeros(10, np.float32)
