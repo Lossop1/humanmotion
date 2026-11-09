@@ -137,8 +137,9 @@ except TypeError:
 
 # 画质档：fast 用于预览与批量检查，high 用于出片
 if QUALITY == "fast":
-    scn.render.resolution_x = 540
-    scn.render.resolution_y = 540
+    # 实测：分辨率对耗时影响最小（720→540 只省 14%），采样与阴影才是大头
+    # 所以 fast 档保留 720p，只降采样、关阴影
+    pass
     try:
         scn.eevee.taa_render_samples = 8
     except AttributeError:
@@ -152,6 +153,25 @@ if QUALITY == "fast":
     except AttributeError:
         pass
 print("  画质档 %s  分辨率 %dx%d" % (QUALITY, scn.render.resolution_x, scn.render.resolution_y))
+
+# 环境变量可单项覆盖，便于做消融
+import os as _os
+_res = _os.environ.get("HM_RENDER_RES")
+if _res:
+    scn.render.resolution_x = int(_res)
+    scn.render.resolution_y = int(_res)
+_smp = _os.environ.get("HM_RENDER_SAMPLES")
+if _smp:
+    try:
+        scn.eevee.taa_render_samples = int(_smp)
+    except AttributeError:
+        pass
+if _os.environ.get("HM_RENDER_SHADOW", "1") == "0":
+    try:
+        scn.eevee.use_shadows = False
+    except AttributeError:
+        pass
+print("  生效分辨率 %dx%d" % (scn.render.resolution_x, scn.render.resolution_y))
 
 if MODE == "range":
     # 只渲染指定帧区间，用来单独看过渡段
