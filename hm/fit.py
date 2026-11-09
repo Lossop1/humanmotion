@@ -102,7 +102,7 @@ def _get_smplify(device, iters, batch_size):
     return model, smplify
 
 
-def fit(joints, batch_size=32, iters=8, device=None):
+def fit(joints, batch_size=64, iters=8, device=None):
     """(T,22,3) → (T,6890,3)。
 
     joints 是米为单位、y 轴向上。
