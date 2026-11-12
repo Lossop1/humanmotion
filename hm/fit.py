@@ -102,7 +102,8 @@ def _get_smplify(device, iters, batch_size):
     return model, smplify
 
 
-def fit(joints, batch_size=64, iters=8, device=None):
+def fit(joints, batch_size=64, iters=8, device=None, init_pose=None, init_cam_t=None,
+        method="opt", refine=0):
     """(T,22,3) → (T,6890,3)。
 
     joints 是米为单位、y 轴向上。
@@ -110,6 +111,29 @@ def fit(joints, batch_size=64, iters=8, device=None):
     """
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     _patch_paths()
+
+    if method == "ik":
+        from hm.ik_init import analytic_pose
+        model = _load_smpl(device)
+        parents = model.parents.detach().cpu().numpy().tolist()
+        with torch.no_grad():
+            z = torch.zeros(1, 10, device=device)
+            rest = model(betas=z, global_orient=torch.zeros(1, 3, device=device),
+                         body_pose=torch.zeros(1, 69, device=device),
+                         transl=torch.zeros(1, 3, device=device),
+                         return_joints=True).joints[0].cpu().numpy()
+        pose, transl = analytic_pose(np.asarray(joints, dtype=np.float64), rest, parents)
+        pose = pose.astype(np.float32)
+        transl = transl.astype(np.float32)
+        if refine and refine > 0:
+            return fit(joints, batch_size=batch_size, iters=refine, device=device,
+                       init_pose=pose, init_cam_t=transl, method="opt")
+        P = np.concatenate([pose, np.zeros((len(pose), 10), np.float32), transl], axis=1)
+        with torch.no_grad():
+            t = torch.from_numpy(P).float().to(device)
+            out = model(betas=t[:, 72:82], global_orient=t[:, 0:3],
+                        body_pose=t[:, 3:72], transl=t[:, 82:85], return_verts=True)
+        return out.vertices.detach().cpu().numpy().astype(np.float32), P
 
     from smplify import SMPLify3D
 
@@ -136,9 +160,21 @@ def fit(joints, batch_size=64, iters=8, device=None):
         kp = torch.from_numpy(chunk).float().to(device)
         if n < batch_size:
             kp = torch.cat([kp, kp[-1:].repeat(batch_size - n, 1, 1)], 0)
-        pp = pose0[None].repeat(batch_size, 1).contiguous()
+        if init_pose is not None:
+            pp = torch.from_numpy(init_pose[done:done + n]).float().to(device)
+            if n < batch_size:
+                pp = torch.cat([pp, pp[-1:].repeat(batch_size - n, 1)], 0)
+            pp = pp.contiguous()
+        else:
+            pp = pose0[None].repeat(batch_size, 1).contiguous()
         pb = betas0[None].repeat(batch_size, 1).contiguous()
-        pc = torch.zeros(batch_size, 3, device=device)
+        if init_cam_t is not None:
+            pc = torch.from_numpy(init_cam_t[done:done + n]).float().to(device)
+            if n < batch_size:
+                pc = torch.cat([pc, pc[-1:].repeat(batch_size - n, 1)], 0)
+            pc = pc.contiguous()
+        else:
+            pc = torch.zeros(batch_size, 3, device=device)
 
         verts, _j, pose, betas, cam_t, _jl = smplify(pp, pb, pc, kp,
                                                      conf_3d=conf, seq_ind=done)
