@@ -241,6 +241,13 @@ def run(job, sb):
     bj["assembled_ok"] = bool(ok)
     bj["assembled_reasons"] = why
     (d / "bounds.json").write_text(json.dumps(bj, ensure_ascii=False, indent=1), encoding="utf-8")
+    from hm import gates as GT
+    gok, gr, gbad = GT.check(V, np.asarray(Jn), params)
+    job.log("A16 自检：rot 中位 %.2f 度/帧 ｜ hf_ratio %.2f ｜ %s"
+            % (gr["rot_med"], gr["hf_ratio"],
+               "通过" if gok else "不通过：" + ",".join(gbad)))
+    bj["selfcheck"] = dict(gr, ok=bool(gok), bad=gbad)
+
     job.log("A16 参数空间装配：%d 帧，骨长误差 %.1f 厘米，反向帧 %.0f%%，几何检查 %s"
             % (bj["total_frames"], met.get("bone_err_cm", 0),
                100 * met.get("rev_frac", 0), "通过" if ok else "不通过"))
