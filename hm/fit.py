@@ -114,10 +114,12 @@ def fit(joints, batch_size=64, iters=8, device=None, init_pose=None, init_cam_t=
 
     if method == "ik":
         from hm.ik_init import analytic_pose
+        from hm.shape import estimate_betas
         model = _load_smpl(device)
+        _betas, _bone_err = estimate_betas(model, joints, device=device)
         parents = model.parents.detach().cpu().numpy().tolist()
         with torch.no_grad():
-            z = torch.zeros(1, 10, device=device)
+            z = torch.from_numpy(_betas).float().to(device).view(1, -1)
             rest = model(betas=z, global_orient=torch.zeros(1, 3, device=device),
                          body_pose=torch.zeros(1, 69, device=device),
                          transl=torch.zeros(1, 3, device=device),
@@ -128,7 +130,7 @@ def fit(joints, batch_size=64, iters=8, device=None, init_pose=None, init_cam_t=
         if refine and refine > 0:
             return fit(joints, batch_size=batch_size, iters=refine, device=device,
                        init_pose=pose, init_cam_t=transl, method="opt")
-        P = np.concatenate([pose, np.zeros((len(pose), 10), np.float32), transl], axis=1)
+        P = np.concatenate([pose, np.tile(_betas, (len(pose), 1)), transl], axis=1)
         with torch.no_grad():
             t = torch.from_numpy(P).float().to(device)
             out = model(betas=t[:, 72:82], global_orient=t[:, 0:3],
