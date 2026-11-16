@@ -292,6 +292,19 @@ def step_a07(job, sb, k):
                                             "model": model, "prompt": prompt,
                                             "frames": n, "k": k})
         dt = round(time.time() - t0, 1)
+        # 同一动作再取库里另外两种写法，一起交给判据挑（措辞差异实测影响很大）
+        from hm import prompt_variants as _pv
+        _vars = _pv.bank_alternatives(prompt)
+        for _pv_text in _vars:
+            try:
+                _more = generate.generate([_pv_text] * max(2, k // 2),
+                                          [n] * max(2, k // 2), name=model)
+            except Exception as _e:
+                job.log("A07 %s 变体生成失败：%s" % (seg["segment_id"], str(_e)[:60]))
+                continue
+            feats = list(feats) + list(_more)
+            job.log("A07 %s 追加变体写法：%r（+%d 个候选）"
+                    % (seg["segment_id"], _pv_text, len(_more)))
         cands = []
         for i, F in enumerate(feats, 1):
             cid = "cand_%02d" % i
@@ -306,7 +319,7 @@ def step_a07(job, sb, k):
                 "seed_control": "unsupported",
             })
         seg["candidates"] = cands
-        job.log("A07 %s 生成 %d 个候选，每批 %.1f 秒%s" % (seg["segment_id"], k, dt,
+        job.log("A07 %s 生成 %d 个候选，每批 %.1f 秒%s" % (seg["segment_id"], len(feats), dt,
                                                    "（缓存）" if hit else ""))
     return sb
 
@@ -498,6 +511,19 @@ def step_a12_a13(job, sb, max_retry=2):
         seg["ranking"] = [c["candidate_id"] for c in ok]
         job.log("A12 %s 选中 %s（排序依据：动作签名、骨长偏差、单帧姿态变化、路径长度）"
                 % (seg["segment_id"], seg["selected"]))
+    # 收尾：在所有通过判据的候选里做一次动态规划，选交界最优组合。
+    # 逐段排序只管「这一段好不好」，交界只管「两段接得顺不顺」，两者都要。
+    if all(seg.get("segment_decision") == "pass" for seg in sb["segments"]):
+        try:
+            from hm import finish_job as _fj
+            _chosen = _fj.choose_combination(job, sb)
+            job.log("A12 选交界最优组合：%s"
+                    % "、".join("%s→%s" % (sg["segment_id"][-3:], "cand_%02d" % n)
+                               for sg, n in _chosen))
+            for sg, n in _chosen:
+                sg["selected"] = "cand_%02d" % n
+        except Exception as _e:
+            job.log("A12 交界优化跳过：%s" % str(_e)[:80])
     job.save_json("storyboard.json", sb)
     return sb
 
