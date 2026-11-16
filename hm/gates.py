@@ -68,7 +68,7 @@ if __name__ == "__main__":
              "通过" if ok else "不通过：" + ",".join(bad)))
 
 
-def junction_jerk(seq, junctions, segments):
+def junction_jerk(seq, junctions, segments, backend=None):
     """交界突变：过渡窗口内逐帧最大骨向变化的峰值，与前段段内中位的比值。
 
     校准：MDM 转身那一处峰值 44.2 度/帧（13.6 倍）；MoMask 同一处 5.7 度/帧（1.6 倍）。
@@ -102,7 +102,17 @@ def junction_jerk(seq, junctions, segments):
         base = float(np.median(rates[starts[i][0]:max(starts[i][0] + 1, a1 - 1)])) \
             if a1 - starts[i][0] > 1 else 1.0
         ratio = peak / max(base, 1e-6)
+        _lim = None
+        if backend:
+            try:
+                from hm import criteria_backend as _cb
+                _lim = _cb.limit(backend, "rate_p95_deg_per_frame")
+            except Exception:
+                _lim = None
         out.append({"between": j.get("between"), "peak_deg_per_frame": round(peak, 1),
                     "ratio": round(ratio, 1),
-                    "suspect": bool(ratio > 6.0 and peak > 25.0)})
+                    "limit_deg_per_frame": _lim,
+                    # 有后端校准时用它的 p95（层二：后端内离群）；
+                    # 没有校准时退回绝对物理量（层三：跨后端可比），两项都要满足
+                    "suspect": bool(ratio > 6.0 and peak > ((_lim * 0.85) if _lim else 25.0))})
     return out
