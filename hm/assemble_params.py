@@ -10,6 +10,8 @@ import json
 import sys
 from pathlib import Path
 
+import math
+
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
@@ -22,6 +24,9 @@ FM._patch_paths()
 ROT_DIM = 72          # 0:3 根 + 3:72 身体
 BETAS = (72, 82)
 TRANSL = (82, 85)
+
+
+TRANSITION_MAX_RATE = 9.0   # 过渡允许的最大骨向变化速度（度/帧）
 
 
 def joint_speed(J, tail=True, w=3):
@@ -140,6 +145,8 @@ def build(job, sb, verbose=True):
                    FJ.bone_rate(pieces[i], tail=False), 1e-6)
         n = int(max(2, min(60, round(gap / rate))))
         n = int(min(n, max(2, FJ.DEFAULT_TRANSITION)) if gap <= FJ.EXTREME_GAP_DEG else n)
+        # 过渡本身也有速度上限：姿态差再大，也不能一两帧甩完
+        n = int(min(60, max(n, math.ceil(gap / TRANSITION_MAX_RATE))))
         w_in = joint_speed(pieces[i - 1], tail=True)
         w_out = joint_speed(pieces[i], tail=False)
         nom = max(gap / max(n, 1), 1e-6)
