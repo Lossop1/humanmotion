@@ -114,9 +114,10 @@ def build(job, sb, verbose=True):
             placed, dyaw = FJ.align_pair(prev, J)
         if verbose:
             print("    拟合 %s ..." % seg["segment_id"], flush=True)
-        _m = __import__("os").environ.get("HM_FIT_METHOD", "ik")
+        _m = __import__("os").environ.get("HM_FIT_METHOD", "opt")
         _ref = int(__import__("os").environ.get("HM_FIT_REFINE", "0"))
-        _, P = FM.fit(placed, method=_m, refine=_ref)
+        _it = int(__import__("os").environ.get("HM_FIT_ITERS", "8"))
+        _, P = FM.fit(placed, method=_m, refine=_ref, iters=_it)
         P = np.asarray(P, dtype=np.float64)
         pieces.append(placed)
         seg_params.append(P)
