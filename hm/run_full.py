@@ -109,7 +109,7 @@ def reselect_with_pose(job, sb):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sentence")
-    ap.add_argument("--k", type=int, default=2)
+    ap.add_argument("--k", type=int, default=6)
     ap.add_argument("--job-id", default=None)
     ap.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
     a = ap.parse_args()

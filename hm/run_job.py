@@ -376,7 +376,7 @@ def step_a12_a13(job, sb, max_retry=2):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sentence")
-    ap.add_argument("--k", type=int, default=2, help="每段候选数")
+    ap.add_argument("--k", type=int, default=6, help="每段候选数")
     ap.add_argument("--job-id", default=None)
     ap.add_argument("--no-gen", action="store_true", help="只跑到 A06，不生成")
     a = ap.parse_args()
