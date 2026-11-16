@@ -102,6 +102,9 @@ def resolve(prompt, prefer=None):
     models = {m: d for m, d in v.get("models", {}).items() if m in BACKENDS}
     if not models:
         return DEFAULT, "unverified", "能力表里的后端都未注册", {"action": key}
+    # 复合动作（"sits down and stands back up"）只对原句成立，不能外推到单动作
+    if v.get("prompt_scope") == "composite":
+        return DEFAULT, "unverified", "能力表条目是复合动作，不能外推到单段", {"action": key}
     best = max(models, key=lambda m: models[m].get("pass_rate", 0))
     if prefer and prefer in models:
         best = prefer
