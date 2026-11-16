@@ -88,12 +88,17 @@ def signature(J):
     }
 
 
+# 只认「动作词」，不认方向词。
+# 之前把 forward 也写进位移规则，导致「bends over forward」被要求走出去 0.6 米，
+# 这是把方向当成动作了。
 RULES = [
-    ("walk|run|sprint|forward|backward", "disp_m", 0.6, "应走出去"),
-    ("turn|转身|rotate", "yaw_deg", 45.0, "应转向"),
-    ("raise|wave|挥手|举手|stretch", "wrist_above", 0.05, "手应举过肩"),
-    ("sit|坐下|kneel", "pelvis_end_drop", 0.18, "结束时重心应降低"),
-    ("crouch|squat|bend", "pelvis_drop", 0.18, "应降低重心"),
+    ("walk|walking|run|running|sprint|sprinting|jog|march|step forward| stroll",
+     "disp_m", 0.6, "应走出去"),
+    ("turn|turning|rotate|spin|pivot", "yaw_deg", 45.0, "应转向"),
+    ("raise|raising|wave|waving|stretch|stretching|lift|lifting",
+     "wrist_above", 0.05, "手应举过肩"),
+    ("sit|sits|sitting|seated", "pelvis_end_drop", 0.18, "结束时重心应降低"),
+    ("crouch|squat|bend|bending|kneel|kneeling", "pelvis_drop", 0.18, "应降低重心"),
 ]
 
 

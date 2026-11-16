@@ -34,7 +34,7 @@ def run(sid, sentence):
     if jd.exists():
         shutil.rmtree(jd)
     t0 = time.time()
-    p = subprocess.run([sys.executable, "-m", "hm.run_full", sentence, "--k", "2",
+    p = subprocess.run([sys.executable, "-m", "hm.run_full", sentence, "--k", "6",
                         "--job-id", job], cwd=str(ROOT), capture_output=True, text=True)
     dt = time.time() - t0
     rec = {"id": sid, "sentence": sentence, "job": job, "elapsed_s": round(dt, 1),
