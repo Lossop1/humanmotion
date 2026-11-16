@@ -24,6 +24,33 @@ UNSUPPORTED_WORDS = ("crouch", "squat", "sit", "sitting", "kneel", "lie", "lying
 CAPABILITY_VERSION = "capability_v1"
 
 
+_CAP = {}
+
+
+def _cap_lookup(prompt):
+    """按提示词查能力表。返回 (status, model, 中文名) 或 None。"""
+    import json
+    from pathlib import Path
+    if not _CAP:
+        p = Path(__file__).resolve().parent.parent / "outputs" / "_reference" / "capability_v4.json"
+        _CAP["doc"] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+    doc = _CAP["doc"]
+    if not doc:
+        return None
+    text = str(prompt).lower()
+    for key, v in doc["table"].items():
+        words = [w for w in v["prompt"].lower().split()[:3] if len(w) > 2]
+        if key.replace("_", " ") in text or v["action_zh"] in str(prompt) or any(w in text for w in words):
+            models = v.get("models", {})
+            if not models:
+                return None
+            best = v.get("best") or max(models, key=lambda m: models[m].get("pass_rate", 0))
+            st = models[best].get("status", "unverified")
+            st = {"support": "supported", "supported": "supported"}.get(st, st)
+            return st, best, v.get("action_zh")
+    return None
+
+
 def step_a01(job, cfg):
     req = job.write_request(cfg)
     job.log("A01 指令与配置已保存  job_id=%s" % job.job_id)
@@ -67,8 +94,13 @@ def step_a03(job, sb):
     """A03：动作可支持性。无能力表时标 unverified，禁用词标 unsupported。"""
     rows = []
     for seg in sb["segments"]:
-        low = (seg.get("text_gen") or "").lower()
-        if any(w in low for w in UNSUPPORTED_WORDS):
+        prompt = seg.get("text_gen") or ""
+        low = prompt.lower()
+        hit = _cap_lookup(prompt)
+        if hit is not None:
+            status, model, zh = hit
+            reason = "能力表：%s 最佳后端 %s" % (zh or "-", model)
+        elif any(w in low for w in UNSUPPORTED_WORDS):
             status, reason = "unsupported", "命中禁用词表（实测生成质量不可靠）"
         else:
             status, reason = "unverified", "尚无该动作类别的能力测试数据"

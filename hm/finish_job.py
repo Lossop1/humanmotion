@@ -126,8 +126,172 @@ def bone_rate(J, tail=True, w=3):
     return float(np.mean(vals)) if vals else 1.0
 
 
+
+def bend_sign(Jf, root, mid, tip):
+    """关节弯曲方向：叉积在身体侧向上的分量。"""
+    f = body_forward(Jf)
+    side = np.cross(np.array([0.0, 1.0, 0.0]), f)
+    a = Jf[mid] - Jf[root]
+    b = Jf[tip] - Jf[mid]
+    return float(np.dot(np.cross(a, b), side))
+
+
+BEND_CHAINS = (("左肘", 16, 18, 20), ("右肘", 17, 19, 21),
+               ("左膝", 1, 4, 7), ("右膝", 2, 5, 8))
+
+
+def bend_flips(J):
+    """每个关节在整条序列里弯曲方向的翻转帧号。"""
+    out = {}
+    for nm, r, m, t in BEND_CHAINS:
+        signs = np.array([bend_sign(J[i], r, m, t) for i in range(len(J))])
+        pos = signs > 0
+        out[nm] = [int(i) for i in range(1, len(signs)) if pos[i] != pos[i - 1]]
+    return out
+
+
+def validate_assembled(J):
+    """装配后整条序列的检查。返回 (ok, 明细)。"""
+    from hm import criteria_v2
+    ok, hard, met, why = criteria_v2.check(J, "", None, None)
+    flips = bend_flips(J)
+    detail = {
+        "criteria_ok": bool(ok),
+        "hard": {k: bool(v) for k, v in hard.items()},
+        "reasons": why,
+        "bone_rel_mean_max": met.get("bone_rel_mean_max"),
+        "rev_frac": met.get("rev_frac"),
+        "min_separation_m": met.get("min_separation_m"),
+        "bend_flips": {k: (v[:8] if v else []) for k, v in flips.items()},
+        "bend_flip_count": {k: len(v) for k, v in flips.items()},
+    }
+    total_flips = sum(len(v) for v in flips.values())
+    detail["bend_total_flips"] = total_flips
+    return (ok and total_flips == 0), detail
+
+
+def segment_candidates(job, sb):
+    """每段可用的候选列表（只取判据通过的）。"""
+    out = []
+    for seg in sb["segments"]:
+        cands = []
+        for c in seg.get("candidates", []):
+            n = int(c["candidate_id"].split("_")[-1])
+            m = job.dir / "segments" / seg["segment_id"] / ("candidate_%d" % n) / "metrics.json"
+            try:
+                import json as _json
+                mm = _json.loads(m.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            if mm.get("decision") == "pass":
+                cands.append(n)
+        out.append((seg, cands))
+    return out
+
+
+def choose_combination(job, sb, verbose=True):
+    """动态规划：为每段选一个候选，使相邻段交界姿态差之和最小。"""
+    segs = segment_candidates(job, sb)
+    if any(not c for _, c in segs):
+        # 降级：没有通过判据的段，改用问题项最少的候选，并显式记录
+        import json as _j
+        relaxed = []
+        for s, c in segs:
+            if c:
+                relaxed.append((s, c))
+                continue
+            best_n, best_k = None, 10 ** 6
+            for cd in s.get("candidates", []):
+                n = int(cd["candidate_id"].split("_")[-1])
+                mp = job.dir / "segments" / s["segment_id"] / ("candidate_%d" % n) / "metrics.json"
+                try:
+                    mm = _j.loads(mp.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                k = len(mm.get("failure_reasons") or [])
+                if k < best_k:
+                    best_n, best_k = n, k
+            if best_n is None:
+                relaxed.append((s, []))
+            else:
+                job.log("降级：%s 无通过判据的候选，改用 candidate_%d（%d 项问题）"
+                        % (s["segment_id"], best_n, best_k))
+                relaxed.append((s, [best_n]))
+        segs = relaxed
+    if any(not c for _, c in segs):
+        bad = [s["segment_id"] for s, c in segs if not c]
+        raise SystemExit("这些段没有任何候选，无法装配：%s" % bad)
+
+    cache = {}
+
+    def aligned_last(si, ci):
+        """第 si 段第 ci 个候选（已按前一段对齐后）的末帧。"""
+        key = (si, ci)
+        if key in cache:
+            return cache[key]
+        n = segs[si][1][ci]
+        J = np.load(job.dir / "segments" / segs[si][0]["segment_id"] /
+                    ("candidate_%d" % n) / "joints22.npy")
+        if si == 0:
+            cache[key] = J
+            return J
+        # 对齐到前一段的每个候选，取平均位置不合适；这里只用于估算，直接用首段姿态
+        cache[key] = J
+        return J
+
+    # 用「各段首末帧原始姿态」估算交界差即可（对齐只改朝向，不改姿态差）
+    Js = []
+    for si, (seg, cands) in enumerate(segs):
+        row = {}
+        for ci, n in enumerate(cands):
+            row[ci] = np.load(job.dir / "segments" / seg["segment_id"] /
+                              ("candidate_%d" % n) / "joints22.npy")
+        Js.append(row)
+
+    def gap(a, b):
+        # 必须先按真实装配方式对齐，否则估出来的姿态差和实际不一致
+        b2, _ = align_pair(a, b)
+        g = pose_gap(a[-1], b2[0])
+        # 弯曲方向相反 → 插值必然穿过一次反向，直接重罚
+        bad = 0
+        for nm, r, m_, t_ in BEND_CHAINS:
+            s1 = bend_sign(a[-1], r, m_, t_)
+            s2 = bend_sign(b2[0], r, m_, t_)
+            if s1 * s2 < 0:
+                bad += 1
+        return g + 120.0 * bad
+
+    M = [len(c) for _, c in segs]
+    INF = 1e18
+    cost = [[0.0] * M[0]]
+    back = [[-1] * M[0]]
+    for si in range(1, len(M)):
+        c_new, b_new = [], []
+        for cb in range(M[si]):
+            best, arg = INF, -1
+            for ca in range(M[si - 1]):
+                v = cost[si - 1][ca] + gap(Js[si - 1][ca], Js[si][cb])
+                if v < best:
+                    best, arg = v, ca
+            c_new.append(best)
+            b_new.append(arg)
+        cost.append(c_new)
+        back.append(b_new)
+
+    last = int(np.argmin(cost[-1]))
+    pick = [0] * len(M)
+    pick[-1] = last
+    for si in range(len(M) - 1, 0, -1):
+        pick[si - 1] = back[si][pick[si]]
+
+    if verbose:
+        tot = cost[-1][pick[-1]]
+        print("    联合选择：%s   总代价 %.1f（含弯曲不一致惩罚）"
+              % (["cand_%02d" % (segs[i][1][pick[i]]) for i in range(len(M))], tot), flush=True)
+    return [(segs[i][0], segs[i][1][pick[i]]) for i in range(len(M))]
+
 # ---------------- A16 ----------------
-def step_a16(job, sb):
+def step_a16(job, sb, verbose_choice=True):
     segs = [s for s in sb["segments"] if s.get("selected")]
     if not segs:
         raise SystemExit("没有选中的片段，无法装配")
@@ -135,10 +299,14 @@ def step_a16(job, sb):
         job.log("A16 注意：%d 段里有 %d 段被淘汰，装配只使用通过的段"
                 % (len(sb["segments"]), len(segs)))
 
+    if verbose_choice:
+        pass
+    chosen = choose_combination(job, sb)
     pieces, bounds = [], []
     prev = None
-    for s in segs:
-        n = int(s["selected"].split("_")[-1])
+    for seg, n in chosen:
+        s = seg
+        s["selected"] = "cand_%02d" % n
         J = np.load(job.dir / "segments" / s["segment_id"] / ("candidate_%d" % n) / "joints22.npy")
         if prev is None:
             placed, dyaw = J, 0.0
@@ -193,13 +361,20 @@ def step_a16(job, sb):
     }
     out = job.assembled_dir()
     np.save(out / "joints22.npy", seq)
+    ok, vdetail = validate_assembled(seq)
     bj = {"job_id": job.job_id, "segments": bounds, "junctions": junctions,
-          "total_frames": total, "metrics": metrics, "fps": 20}
+          "total_frames": total, "metrics": metrics, "fps": 20,
+          "assembled_validation": vdetail, "assembled_ok": bool(ok)}
     (out / "bounds.json").write_text(json.dumps(bj, ensure_ascii=False, indent=1), encoding="utf-8")
     (out / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=1), encoding="utf-8")
     job.log("A16 装配完成：%d 段 + %d 处过渡 = %d 帧，最大交界姿态差 %.1f 度"
             % (len(bounds), len(junctions), total,
                max((j["pose_gap_deg"] for j in junctions), default=0.0)))
+    job.log("A16 装配后检查：判据 %s，关节弯曲翻转 %d 次 %s"
+            % ("通过" if vdetail["criteria_ok"] else "不通过",
+               vdetail["bend_total_flips"],
+               "" if vdetail["bend_total_flips"] == 0
+               else str({k: v for k, v in vdetail["bend_flips"].items() if v})))
     return seq, bj
 
 
