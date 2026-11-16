@@ -444,8 +444,12 @@ def apply_limb_ik(frames, JA, JB, arc_deg=0.0):
         # A、B 两端的绝对坐标之间插值，两边就不一致，逆运动学只能把腿弯起来
         # 去够（实测膝盖弯到 103 度、肘弯到 132 度）。
         # 所以把 A 端的末端位置加上根从起点算起的位移，再向 B 端插值。
-        shift = frames[i, 0] - JA[-1, 0]
-        p = (JA[-1, jn] + shift) * (1 - u) + JB[0, jn] * u
+        # 在「相对骨盆」的坐标里插值，再加上骨盆自己的轨迹。
+        # 直接在绝对坐标里插值会让髋到踝的距离中途变短，腿只能靠弯膝去凑，
+        # 结果整段走成了蹲着走（实测膝弯曲 82 度，两端只有 34.5 和 13.4）。
+        rel0 = JA[-1, jn] - JA[-1, 0]
+        rel1 = JB[0, jn] - JB[0, 0]
+        p = frames[i, 0] + rel0 * (1 - u) + rel1 * u
         if arc_deg > 0:
             p[1] += math.tan(math.radians(arc_deg)) * 0.25 * math.sin(math.pi * u) \
                 * float(np.linalg.norm(JB[0, jn] - JA[-1, jn]))

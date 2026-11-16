@@ -26,7 +26,7 @@ ACTIONS = [(a[0], a[1], a[2], (a[2].split()[1:4]), a[3]) for a in ACTIONS_ALL]
 
 SUPPORT_TH = 0.75      # 通过率 ≥ 此值记为支持
 APPROX_TH = 0.40       # 介于两线之间记为可近似
-TABLE_VERSION = "capability_v3full"
+TABLE_VERSION = "capability_v4"
 REF_DIR = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
 
 
@@ -77,13 +77,26 @@ def run_test(models, k, bone_ref, pose_th):
                                 "hard": {k: bool(v) for k, v in hard3.items()},
                                 "why": reasons[:2]})
             rate = ok / max(len(feats), 1)
+            lo, hi, _ = wilson(ok, len(feats))
             rows.append({"action": key, "action_zh": zh, "prompt": prompt, "model": model,
                          "samples": len(feats), "passed": ok, "pass_rate": round(rate, 3),
+                         "ci95": [round(lo, 3), round(hi, 3)],
                          "frames": frames, "seconds": round(time.time() - t0, 1),
                          "details": details})
             print("  %-12s %-10s %d/%d = %.0f%%  (%.1f 秒)"
                   % (key, model, ok, len(feats), 100 * rate, time.time() - t0), flush=True)
     return rows
+
+
+def wilson(passed, n, z=1.96):
+    """通过率的 Wilson 95% 置信区间，小样本下比正态近似稳。"""
+    if n == 0:
+        return (0.0, 0.0, 0.0)
+    p = passed / n
+    d = 1 + z * z / n
+    c = (p + z * z / (2 * n)) / d
+    h = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / d
+    return (max(0.0, c - h), min(1.0, c + h), p)
 
 
 def classify(rate, samples):
@@ -139,6 +152,23 @@ def save(table, rows, models, k):
         "raw": rows,
     }
     p = REF_DIR / ("%s.json" % TABLE_VERSION)
+    # 不同后端分次跑时合并，不互相覆盖
+    if p.exists():
+        try:
+            old = json.loads(p.read_text(encoding="utf-8"))
+            if old.get("version") == TABLE_VERSION:
+                merged = old.get("table", {})
+                for k, v in table.items():
+                    if k in merged:
+                        merged[k]["models"].update(v["models"])
+                    else:
+                        merged[k] = v
+                doc["table"] = merged
+                doc["models"] = sorted(set(old.get("models", [])) | set(models))
+                doc["raw"] = old.get("raw", []) + rows
+                print("  已合并已有结果，覆盖后端：%s" % doc["models"])
+        except Exception as e:
+            print("  合并失败，按新表写出：%s" % e)
     p.write_text(json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
     return p
 
