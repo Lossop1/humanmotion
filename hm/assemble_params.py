@@ -277,4 +277,12 @@ def run(job, sb):
     if mp4.exists():
         shutil.copyfile(mp4, rd / "final.mp4")
     job.log("A18 渲染完成（画质 %s）：%s" % (quality, rd / "final.mp4"))
+    import os as _os2
+    if _os2.environ.get("HM_DELIVER", "1") == "1":
+        try:
+            import frame_kit
+            frame_kit.deliver(job, job.job_id)
+            job.log("A19 交付件：final_cropped.mp4、final_captioned.mp4、分镜.png")
+        except Exception as e:
+            job.log("A19 交付件生成失败：%s" % str(e)[:120])
     return rd / "final.mp4", bj

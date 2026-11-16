@@ -75,8 +75,8 @@ world = bpy.data.worlds.new("w"); scn.world = world; world.use_nodes = True
 world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.56, 0.58, 0.63, 1)
 world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.85
 
-scn.render.resolution_x = 720
-scn.render.resolution_y = 720
+scn.render.resolution_x = 1080
+scn.render.resolution_y = 1080
 scn.render.fps = 20
 cd = bpy.data.cameras.new("cam"); cd.lens = 45
 cam = bpy.data.objects.new("cam", cd); scn.collection.objects.link(cam); scn.camera = cam
@@ -141,7 +141,7 @@ if QUALITY == "fast":
     # 所以 fast 档保留 720p，只降采样、关阴影
     pass
     try:
-        scn.eevee.taa_render_samples = 8
+        scn.eevee.taa_render_samples = 16
     except AttributeError:
         pass
     try:
