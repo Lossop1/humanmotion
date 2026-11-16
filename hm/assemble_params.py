@@ -263,7 +263,8 @@ def run(job, sb):
     from hm import gates as GT
     gok, gr, gbad = GT.check(V, np.asarray(Jn), params)
     from hm import gates as GT
-    _jj = GT.junction_jerk(Jn, junctions, bounds, backend=(chosen[0][0].get('route') or {}).get('model'))
+    _jj = GT.junction_jerk(Jn, bj["junctions"], bj["segments"],
+                            backend=(sb.get('segments') or [{}])[0].get('route', {}).get('model'))
     for _x in _jj:
         if _x["suspect"]:
             job.log("A16 交界可疑：%s 峰值 %.1f 度/帧（前段中位的 %.1f 倍）"
