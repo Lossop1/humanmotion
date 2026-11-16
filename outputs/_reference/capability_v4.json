@@ -1,0 +1,1719 @@
+{
+ "version": "capability_v4",
+ "created": "2026-10-29 12:30",
+ "models": [
+  "momask",
+  "mdm"
+ ],
+ "samples_per_cell": 10,
+ "criteria": "criteria_v3（骨长>10.3% 或 反向帧>0 或 间距<0.045）",
+ "note": "由 /tmp/capv4.log 重建；合并逻辑在两次运行间失效过，故以日志为准",
+ "thresholds": {
+  "supported": 0.75,
+  "approximate": 0.4,
+  "rule": "按 Wilson 95% 区间下界判定，不用点估计"
+ },
+ "table": {
+  "walk": {
+   "action_zh": "向前走",
+   "prompt": "a person walks forward",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "walk_back": {
+   "action_zh": "向后退",
+   "prompt": "a person walks backward",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 7,
+     "samples": 10,
+     "pass_rate": 0.7,
+     "ci95": [
+      0.397,
+      0.892
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "walk_left": {
+   "action_zh": "向左走",
+   "prompt": "a person walks to the left",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "walk_right": {
+   "action_zh": "向右走",
+   "prompt": "a person walks to the right",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "run": {
+   "action_zh": "跑",
+   "prompt": "a person runs forward",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "jog": {
+   "action_zh": "慢跑",
+   "prompt": "a person jogs forward",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "sprint": {
+   "action_zh": "冲刺",
+   "prompt": "a person sprints forward fast",
+   "models": {
+    "momask": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 7,
+     "samples": 10,
+     "pass_rate": 0.7,
+     "ci95": [
+      0.397,
+      0.892
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.9,
+   "best_ci95": [
+    0.596,
+    0.982
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "sidestep": {
+   "action_zh": "侧步",
+   "prompt": "a person sidesteps to the left",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "climb": {
+   "action_zh": "上台阶",
+   "prompt": "a person climbs up stairs",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "descend": {
+   "action_zh": "下台阶",
+   "prompt": "a person walks down stairs",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 6,
+     "samples": 10,
+     "pass_rate": 0.6,
+     "ci95": [
+      0.313,
+      0.832
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "crawl": {
+   "action_zh": "爬行",
+   "prompt": "a person gets on all fours and crawls forward",
+   "models": {
+    "momask": {
+     "passed": 0,
+     "samples": 10,
+     "pass_rate": 0.0,
+     "ci95": [
+      0.0,
+      0.278
+     ],
+     "status": "no"
+    },
+    "mdm": {
+     "passed": 0,
+     "samples": 10,
+     "pass_rate": 0.0,
+     "ci95": [
+      0.0,
+      0.278
+     ],
+     "status": "no"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.0,
+   "best_ci95": [
+    0.0,
+    0.278
+   ],
+   "status": "no",
+   "prompt_scope": "composite"
+  },
+  "sneak": {
+   "action_zh": "蹑手蹑脚",
+   "prompt": "a person sneaks forward slowly",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "skip": {
+   "action_zh": "蹦跳着走",
+   "prompt": "a person skips forward",
+   "models": {
+    "momask": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.9,
+   "best_ci95": [
+    0.596,
+    0.982
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "turn": {
+   "action_zh": "转身",
+   "prompt": "a person turns around in place",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "status": "support",
+     "lean_median_deg": 3.0,
+     "prompt": "a person turns around in place",
+     "retested": "现行判据 criteria_v5"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "status": "support",
+     "lean_median_deg": 9.0,
+     "prompt": "a person turns around in place",
+     "retested": "现行判据 criteria_v5"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.8,
+   "best_ci95": [
+    0.49,
+    0.943
+   ],
+   "status": "approx",
+   "prompt_scope": "simple"
+  },
+  "turn_left": {
+   "action_zh": "向左转",
+   "prompt": "a person walks forward and turns left",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "composite"
+  },
+  "turn_right": {
+   "action_zh": "向右转",
+   "prompt": "a person walks forward and turns right",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "composite"
+  },
+  "spin": {
+   "action_zh": "绕圈走",
+   "prompt": "a person walks in a circle",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "stand": {
+   "action_zh": "站住",
+   "prompt": "a person stands still",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "sit": {
+   "action_zh": "坐下",
+   "prompt": "a person sits down and stands back up",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 2,
+     "samples": 10,
+     "pass_rate": 0.2,
+     "ci95": [
+      0.057,
+      0.51
+     ],
+     "status": "no"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "composite"
+  },
+  "stand_up": {
+   "action_zh": "站起来",
+   "prompt": "a person stands up from a chair",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 7,
+     "samples": 10,
+     "pass_rate": 0.7,
+     "ci95": [
+      0.397,
+      0.892
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "kneel": {
+   "action_zh": "跪下",
+   "prompt": "a person kneels down on one knee",
+   "models": {
+    "momask": {
+     "passed": 2,
+     "samples": 10,
+     "pass_rate": 0.2,
+     "ci95": [
+      0.057,
+      0.51
+     ],
+     "status": "no"
+    },
+    "mdm": {
+     "passed": 1,
+     "samples": 10,
+     "pass_rate": 0.1,
+     "ci95": [
+      0.018,
+      0.404
+     ],
+     "status": "no"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.2,
+   "best_ci95": [
+    0.057,
+    0.51
+   ],
+   "status": "no",
+   "prompt_scope": "simple"
+  },
+  "crouch": {
+   "action_zh": "蹲下",
+   "prompt": "a person crouches down",
+   "models": {
+    "momask": {
+     "passed": 0,
+     "samples": 10,
+     "pass_rate": 0.0,
+     "ci95": [
+      0.0,
+      0.278
+     ],
+     "status": "no"
+    },
+    "mdm": {
+     "passed": 1,
+     "samples": 10,
+     "pass_rate": 0.1,
+     "ci95": [
+      0.018,
+      0.404
+     ],
+     "status": "no"
+    }
+   },
+   "best": "mdm",
+   "best_pass_rate": 0.1,
+   "best_ci95": [
+    0.018,
+    0.404
+   ],
+   "status": "no",
+   "prompt_scope": "simple"
+  },
+  "lie": {
+   "action_zh": "躺下",
+   "prompt": "a person lies down on the floor",
+   "models": {
+    "momask": {
+     "passed": 0,
+     "samples": 10,
+     "pass_rate": 0.0,
+     "ci95": [
+      0.0,
+      0.278
+     ],
+     "status": "no"
+    },
+    "mdm": {
+     "passed": 0,
+     "samples": 10,
+     "pass_rate": 0.0,
+     "ci95": [
+      0.0,
+      0.278
+     ],
+     "status": "no"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.0,
+   "best_ci95": [
+    0.0,
+    0.278
+   ],
+   "status": "no",
+   "prompt_scope": "simple"
+  },
+  "get_up": {
+   "action_zh": "起身",
+   "prompt": "a person gets up from the floor",
+   "models": {
+    "momask": {
+     "passed": 4,
+     "samples": 10,
+     "pass_rate": 0.4,
+     "ci95": [
+      0.168,
+      0.687
+     ],
+     "status": "unclear"
+    },
+    "mdm": {
+     "passed": 4,
+     "samples": 10,
+     "pass_rate": 0.4,
+     "ci95": [
+      0.168,
+      0.687
+     ],
+     "status": "unclear"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.4,
+   "best_ci95": [
+    0.168,
+    0.687
+   ],
+   "status": "unclear",
+   "prompt_scope": "simple"
+  },
+  "bend": {
+   "action_zh": "弯腰",
+   "prompt": "a person bends over forward",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "stretch": {
+   "action_zh": "伸展",
+   "prompt": "a person stretches their arms above their head",
+   "models": {
+    "momask": {
+     "passed": 5,
+     "samples": 10,
+     "pass_rate": 0.5,
+     "ci95": [
+      0.237,
+      0.763
+     ],
+     "status": "approx"
+    },
+    "mdm": {
+     "passed": 1,
+     "samples": 10,
+     "pass_rate": 0.1,
+     "ci95": [
+      0.018,
+      0.404
+     ],
+     "status": "no"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.5,
+   "best_ci95": [
+    0.237,
+    0.763
+   ],
+   "status": "approx",
+   "prompt_scope": "simple"
+  },
+  "wave_hello": {
+   "action_zh": "挥手打招呼",
+   "prompt": "a person waves hello with the right hand",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "wave_goodbye": {
+   "action_zh": "挥手告别",
+   "prompt": "a person waves goodbye",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "clap": {
+   "action_zh": "鼓掌",
+   "prompt": "a person claps their hands",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "raise_hands": {
+   "action_zh": "举手",
+   "prompt": "a person raises both hands",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 3,
+     "samples": 10,
+     "pass_rate": 0.3,
+     "ci95": [
+      0.108,
+      0.603
+     ],
+     "status": "unclear"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "point": {
+   "action_zh": "指向前方",
+   "prompt": "a person points forward with the right hand",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "salute": {
+   "action_zh": "敬礼",
+   "prompt": "a person salutes with the right hand",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "beckon": {
+   "action_zh": "招手示意",
+   "prompt": "a person beckons with the right hand",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "hands_hips": {
+   "action_zh": "叉腰",
+   "prompt": "a person puts both hands on the hips",
+   "models": {
+    "momask": {
+     "passed": 5,
+     "samples": 10,
+     "pass_rate": 0.5,
+     "ci95": [
+      0.237,
+      0.763
+     ],
+     "status": "approx"
+    },
+    "mdm": {
+     "passed": 4,
+     "samples": 10,
+     "pass_rate": 0.4,
+     "ci95": [
+      0.168,
+      0.687
+     ],
+     "status": "unclear"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.5,
+   "best_ci95": [
+    0.237,
+    0.763
+   ],
+   "status": "approx",
+   "prompt_scope": "simple"
+  },
+  "cross_arms": {
+   "action_zh": "抱臂",
+   "prompt": "a person crosses both arms on the chest",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "scratch_head": {
+   "action_zh": "挠头",
+   "prompt": "a person scratches their head with their right hand",
+   "models": {
+    "momask": {
+     "passed": 5,
+     "samples": 10,
+     "pass_rate": 0.5,
+     "ci95": [
+      0.237,
+      0.763
+     ],
+     "status": "approx"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "mdm",
+   "best_pass_rate": 0.8,
+   "best_ci95": [
+    0.49,
+    0.943
+   ],
+   "status": "approx",
+   "prompt_scope": "simple"
+  },
+  "shake_head": {
+   "action_zh": "摇头",
+   "prompt": "a person shakes the head",
+   "models": {
+    "momask": {
+     "passed": 6,
+     "samples": 10,
+     "pass_rate": 0.6,
+     "ci95": [
+      0.313,
+      0.832
+     ],
+     "status": "approx"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "mdm",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "nod": {
+   "action_zh": "点头",
+   "prompt": "a person nods their head",
+   "models": {
+    "momask": {
+     "passed": 1,
+     "samples": 10,
+     "pass_rate": 0.1,
+     "ci95": [
+      0.018,
+      0.404
+     ],
+     "status": "no"
+    },
+    "mdm": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    }
+   },
+   "best": "mdm",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "shrug": {
+   "action_zh": "耸肩",
+   "prompt": "a person shrugs the shoulders",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 6,
+     "samples": 10,
+     "pass_rate": 0.6,
+     "ci95": [
+      0.313,
+      0.832
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "jump": {
+   "action_zh": "向上跳",
+   "prompt": "a person jumps up in place",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "jump_forward": {
+   "action_zh": "向前跳",
+   "prompt": "a person jumps forward once",
+   "models": {
+    "momask": {
+     "passed": 6,
+     "samples": 10,
+     "pass_rate": 0.6,
+     "ci95": [
+      0.313,
+      0.832
+     ],
+     "status": "approx"
+    },
+    "mdm": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "mdm",
+   "best_pass_rate": 0.8,
+   "best_ci95": [
+    0.49,
+    0.943
+   ],
+   "status": "approx",
+   "prompt_scope": "simple"
+  },
+  "hop": {
+   "action_zh": "单脚跳",
+   "prompt": "a person hops on one leg",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "kick": {
+   "action_zh": "踢腿",
+   "prompt": "a person kicks with their right leg",
+   "models": {
+    "momask": {
+     "passed": 6,
+     "samples": 10,
+     "pass_rate": 0.6,
+     "ci95": [
+      0.313,
+      0.832
+     ],
+     "status": "approx"
+    },
+    "mdm": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    }
+   },
+   "best": "mdm",
+   "best_pass_rate": 0.9,
+   "best_ci95": [
+    0.596,
+    0.982
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "punch": {
+   "action_zh": "出拳",
+   "prompt": "a person punches forward with the right hand",
+   "models": {
+    "momask": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    },
+    "mdm": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    }
+   },
+   "best": "mdm",
+   "best_pass_rate": 0.9,
+   "best_ci95": [
+    0.596,
+    0.982
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "throw": {
+   "action_zh": "投掷",
+   "prompt": "a person throws a ball forward",
+   "models": {
+    "momask": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 7,
+     "samples": 10,
+     "pass_rate": 0.7,
+     "ci95": [
+      0.397,
+      0.892
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.9,
+   "best_ci95": [
+    0.596,
+    0.982
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "push": {
+   "action_zh": "推",
+   "prompt": "a person pushes forward with both hands",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 3,
+     "samples": 10,
+     "pass_rate": 0.3,
+     "ci95": [
+      0.108,
+      0.603
+     ],
+     "status": "unclear"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "simple"
+  },
+  "pull": {
+   "action_zh": "拉",
+   "prompt": "a person pulls backward with both hands",
+   "models": {
+    "momask": {
+     "passed": 8,
+     "samples": 10,
+     "pass_rate": 0.8,
+     "ci95": [
+      0.49,
+      0.943
+     ],
+     "status": "approx"
+    },
+    "mdm": {
+     "passed": 7,
+     "samples": 10,
+     "pass_rate": 0.7,
+     "ci95": [
+      0.397,
+      0.892
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.8,
+   "best_ci95": [
+    0.49,
+    0.943
+   ],
+   "status": "approx",
+   "prompt_scope": "simple"
+  },
+  "pick": {
+   "action_zh": "捡东西",
+   "prompt": "a person bends down and picks something up",
+   "models": {
+    "momask": {
+     "passed": 10,
+     "samples": 10,
+     "pass_rate": 1.0,
+     "ci95": [
+      0.722,
+      1.0
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 6,
+     "samples": 10,
+     "pass_rate": 0.6,
+     "ci95": [
+      0.313,
+      0.832
+     ],
+     "status": "approx"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 1.0,
+   "best_ci95": [
+    0.722,
+    1.0
+   ],
+   "status": "support",
+   "prompt_scope": "composite"
+  },
+  "dance": {
+   "action_zh": "跳舞",
+   "prompt": "a person dances",
+   "models": {
+    "momask": {
+     "passed": 0,
+     "samples": 10,
+     "pass_rate": 0.0,
+     "ci95": [
+      0.0,
+      0.278
+     ],
+     "status": "no"
+    },
+    "mdm": {
+     "passed": 4,
+     "samples": 10,
+     "pass_rate": 0.4,
+     "ci95": [
+      0.168,
+      0.687
+     ],
+     "status": "unclear"
+    }
+   },
+   "best": "mdm",
+   "best_pass_rate": 0.4,
+   "best_ci95": [
+    0.168,
+    0.687
+   ],
+   "status": "unclear",
+   "prompt_scope": "simple"
+  },
+  "squat": {
+   "action_zh": "深蹲",
+   "prompt": "a person squats down and stands up",
+   "models": {
+    "momask": {
+     "passed": 9,
+     "samples": 10,
+     "pass_rate": 0.9,
+     "ci95": [
+      0.596,
+      0.982
+     ],
+     "status": "support"
+    },
+    "mdm": {
+     "passed": 2,
+     "samples": 10,
+     "pass_rate": 0.2,
+     "ci95": [
+      0.057,
+      0.51
+     ],
+     "status": "no"
+    }
+   },
+   "best": "momask",
+   "best_pass_rate": 0.9,
+   "best_ci95": [
+    0.596,
+    0.982
+   ],
+   "status": "support",
+   "prompt_scope": "composite"
+  }
+ },
+ "notes": [
+  "prompt_scope 由 capability 生成时补：composite 的条目只对原句成立，路由按 unverified 处理"
+ ]
+}

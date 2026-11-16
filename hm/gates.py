@@ -66,3 +66,43 @@ if __name__ == "__main__":
     print("  rot中位 %.2f ｜ rot95 %.2f ｜ hf_ratio %.2f ｜ %s"
           % (r["rot_med"], r["rot_p95"], r["hf_ratio"],
              "通过" if ok else "不通过：" + ",".join(bad)))
+
+
+def junction_jerk(seq, junctions, segments):
+    """交界突变：过渡窗口内逐帧最大骨向变化的峰值，与前段段内中位的比值。
+
+    校准：MDM 转身那一处峰值 44.2 度/帧（13.6 倍）；MoMask 同一处 5.7 度/帧（1.6 倍）。
+    因此 比值 > 6 且 峰值 > 25 度/帧 记为可疑（两项都要满足，
+    否则前段几乎静止时比值会被放大成误报）。
+    """
+    import math
+    from hm.finish_job import BONES, dirs_of, rot_between
+
+    seq = np.asarray(seq, dtype=np.float64)
+    rates = []
+    for i in range(len(seq) - 1):
+        d0, _ = dirs_of(seq[i])
+        d1, _ = dirs_of(seq[i + 1])
+        rates.append(max(math.degrees(rot_between(d0[k], d1[k])[1]) for k in range(len(BONES))))
+    rates = np.array(rates) if rates else np.zeros(1)
+
+    starts, t = [], 0
+    for i, b in enumerate(segments):
+        starts.append((t, t + b["frames"]))
+        t += b["frames"]
+        if i < len(junctions):
+            t += junctions[i]["transition_frames"]
+
+    out = []
+    for i, j in enumerate(junctions):
+        a1 = starts[i][1]
+        b0 = starts[i + 1][0]
+        lo, hi = max(0, a1 - 2), min(len(rates), b0 + 2)
+        peak = float(rates[lo:hi].max()) if hi > lo else 0.0
+        base = float(np.median(rates[starts[i][0]:max(starts[i][0] + 1, a1 - 1)])) \
+            if a1 - starts[i][0] > 1 else 1.0
+        ratio = peak / max(base, 1e-6)
+        out.append({"between": j.get("between"), "peak_deg_per_frame": round(peak, 1),
+                    "ratio": round(ratio, 1),
+                    "suspect": bool(ratio > 6.0 and peak > 25.0)})
+    return out
