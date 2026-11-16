@@ -85,25 +85,19 @@ def step_a11(job, sb):
 
 
 def reselect_with_pose(job, sb):
-    """A12 重排：硬检查含姿态规则；软指标仍按抖动与单帧姿态变化。"""
+    """A12：只做一次选择，交给 run_job.step_a12_a13（唯一实现）。"""
+    import json as _j
     for seg in sb["segments"]:
         rows = []
         for c in seg.get("candidates", []):
             n = int(c["candidate_id"].split("_")[-1])
-            m = json.loads((job.cand_dir(seg["segment_id"], n) / "metrics.json").read_text(encoding="utf-8"))
-            rows.append(m)
-        ok = [m for m in rows if m["decision"] == "pass"]
-        if not ok:
-            seg["selected"] = None
-            seg["segment_decision"] = "reject"
-            continue
-        ok.sort(key=lambda m: (m["metrics"].get("bone_length_jitter_m") or 9e9,
-                               m["metrics"].get("pose_rate_max") or 9e9,
-                               m["metrics"].get("root_path_length") or 9e9))
-        seg["selected"] = ok[0]["candidate_id"]
-        seg["segment_decision"] = "pass"
-        seg["ranking"] = [m["candidate_id"] for m in ok]
-        job.log("A12 %s 选中 %s" % (seg["segment_id"], seg["selected"]))
+            mp = job.cand_dir(seg["segment_id"], n) / "metrics.json"
+            try:
+                rows.append(_j.loads(mp.read_text(encoding="utf-8")))
+            except Exception:
+                continue
+        seg["candidate_metrics"] = rows
+    run_job.step_a12_a13(job, sb)
 
 
 def main():
