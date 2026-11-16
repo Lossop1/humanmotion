@@ -398,12 +398,11 @@ def step_a12_a13(job, sb, max_retry=2):
                 verdict, bad, det = _sig.check(_prompt, _sig.signature(J))
                 return verdict
 
-            _good = [c for c in ok if _sig_pass(c) is True]
-            if _good and len(_good) < len(ok):
-                job.log("A12 %s 动作签名：%d/%d 个候选确实做出了该动作，优先从中挑"
-                        % (seg["segment_id"], len(_good), len(ok)))
-            if _good:
-                ok = _good
+            _sig_of = {c['candidate_id']: _sig_pass(c) for c in ok}
+            _n_good = sum(1 for v in _sig_of.values() if v is True)
+            if _n_good < len(ok):
+                job.log('A12 %s 动作签名（只作排序参考）：%d/%d 个候选看起来做出了该动作'
+                        % (seg['segment_id'], _n_good, len(ok)))
         except Exception as _e:
             job.log("A12 %s 动作签名跳过：%s" % (seg["segment_id"], str(_e)[:80]))
         if not ok:
@@ -425,14 +424,16 @@ def step_a12_a13(job, sb, max_retry=2):
         # 软排序：骨长偏差优先，其次单帧姿态变化，再其次路径长度
         def key(c):
             m = c["metrics"]
-            return (m.get("bone_length_jitter_m") or 9e9,
+            _ok = _sig_of.get(c["candidate_id"]) if "_sig_of" in dir() else None
+            return (0 if _ok is True else 1,
+                    m.get("bone_length_jitter_m") or 9e9,
                     m.get("pose_rate_max") or 9e9,
                     m.get("root_path_length") or 9e9)
         ok.sort(key=key)
         seg["selected"] = ok[0]["candidate_id"]
         seg["segment_decision"] = "pass"
         seg["ranking"] = [c["candidate_id"] for c in ok]
-        job.log("A12 %s 选中 %s（排序依据：骨长偏差、单帧姿态变化、路径长度）"
+        job.log("A12 %s 选中 %s（排序依据：动作签名、骨长偏差、单帧姿态变化、路径长度）"
                 % (seg["segment_id"], seg["selected"]))
     job.save_json("storyboard.json", sb)
     return sb

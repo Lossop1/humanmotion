@@ -192,6 +192,16 @@ def segment_candidates(job, sb):
 def choose_combination(job, sb, verbose=True):
     """动态规划：为每段选一个候选，使相邻段交界姿态差之和最小。"""
     segs = segment_candidates(job, sb)
+    import os as _os
+    policy = _os.environ.get("HM_DEGRADE", "drop")   # drop|clip|abort
+    if any(not c for _, c in segs):
+        bad = [s["segment_id"] for s, c in segs if not c]
+        if policy == "abort":
+            raise SystemExit("这些段没有通过判据的候选：%s" % bad)
+        if policy == "drop":
+            job.log("取舍：%s 没有通过判据的候选，从成片里去掉（HM_DEGRADE=drop）"
+                    % "、".join(bad))
+            segs = [(s, c) for s, c in segs if c]
     if any(not c for _, c in segs):
         # 降级：没有通过判据的段，改用问题项最少的候选，并显式记录
         import json as _j
