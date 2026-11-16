@@ -117,7 +117,7 @@ def _call(system, user, tries=3):
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        "temperature": 0.2,
+        "temperature": 0.0,
     }).encode("utf-8")
     last = None
     for k in range(tries):
@@ -157,8 +157,14 @@ def _enum(v, allowed):
 def plan(sentence):
     """一句中文 → (段落列表, 过渡列表, 地形)。
 
-    段落每项 {label, prompt, frames}；过渡每项 {junction, duration_s, ease}。
+    段落每项 {label, prompt, frames, source, direction, object, relation, speed}。
+    同一句话只调用一次 LLM：结果按句子缓存，改下游时不必重问，也不会有两份措辞。
     """
+    from hm import cache as _cache
+    ck = _cache.key(("plan", sentence))
+    cached = _cache.get_json("plan", ck) if _cache.enabled() else None
+    if cached is not None:
+        return cached["segs"], cached["trans"], cached["terrain"]
     data = _parse(_call(SYSTEM, "描述：%s\n\n请输出 JSON。" % sentence))
 
     segs = []
@@ -203,6 +209,8 @@ def plan(sentence):
     terrain = data.get("terrain") or {"start_y": 0.0, "profile": []}
     if not isinstance(terrain.get("profile"), list):
         terrain["profile"] = []
+    if _cache.enabled():
+        _cache.put_json("plan", ck, {"segs": segs, "trans": trans, "terrain": terrain})
     return segs, trans, terrain
 
 
