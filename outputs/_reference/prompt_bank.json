@@ -1,0 +1,298 @@
+{
+ "sit": {
+  "phrasings": [
+   {
+    "text": "a person sits down",
+    "models": {
+     "momask": {
+      "passed": 0,
+      "samples": 4,
+      "rate": 0.0
+     }
+    }
+   },
+   {
+    "text": "a person sits on a chair",
+    "models": {
+     "momask": {
+      "passed": 0,
+      "samples": 4,
+      "rate": 0.0
+     }
+    }
+   },
+   {
+    "text": "a person lowers into a chair",
+    "models": {
+     "momask": {
+      "passed": 0,
+      "samples": 4,
+      "rate": 0.0
+     }
+    }
+   }
+  ],
+  "best": "a person sits down",
+  "best_rate": 0.0,
+  "tested_at": "2026-11-16 15:46:50"
+ },
+ "pick": {
+  "phrasings": [
+   {
+    "text": "a person picks something up from the floor",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person bends down and picks something up",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person reaches down to pick something up",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   }
+  ],
+  "best": "a person picks something up from the floor",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-16 15:46:50"
+ },
+ "bend": {
+  "phrasings": [
+   {
+    "text": "a person bends forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person bends over forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person bows forward",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   }
+  ],
+  "best": "a person bends forward",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-16 15:46:51"
+ },
+ "jump": {
+  "phrasings": [
+   {
+    "text": "a person jumps up",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person jumps up once in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person hops up",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person jumps up",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-16 15:46:51"
+ },
+ "wave": {
+  "phrasings": [
+   {
+    "text": "a person waves hello",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person waves with the right hand",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person waves goodbye",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person waves hello",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-16 15:46:51"
+ },
+ "walk_back": {
+  "phrasings": [
+   {
+    "text": "a person walks backward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person steps backward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person walks back",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person walks backward",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-16 15:46:52"
+ },
+ "kick": {
+  "phrasings": [
+   {
+    "text": "a person kicks forward",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   },
+   {
+    "text": "a person kicks with the right leg",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   },
+   {
+    "text": "a person does a front kick",
+    "models": {
+     "momask": {
+      "passed": 1,
+      "samples": 4,
+      "rate": 0.25
+     }
+    }
+   }
+  ],
+  "best": "a person kicks forward",
+  "best_rate": 0.75,
+  "tested_at": "2026-11-16 15:46:52"
+ },
+ "punch": {
+  "phrasings": [
+   {
+    "text": "a person punches forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person throws a punch",
+    "models": {
+     "momask": {
+      "passed": 0,
+      "samples": 4,
+      "rate": 0.0
+     }
+    }
+   },
+   {
+    "text": "a person punches with the right hand",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person punches forward",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-16 15:46:53"
+ }
+}
