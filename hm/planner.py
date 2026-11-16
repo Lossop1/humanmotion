@@ -24,10 +24,23 @@ SYSTEM = """你是人体动作分镜器。给你一句中文描述，输出一�
 把句子拆成按时间排列的动作段。
 1 一句话有几个先后发生的动作就拆几段，一段只描述一个连续动作。
 2 如果两个动作同时发生（例如「一边走一边挥手」），合并成一段，不要拆。
-3 每段给三个字段：
-   label   中文动作名，只用于日志，可以自由写
-   prompt  英文提示词，直接交给生成模型
-   frames  这段占多少帧（20 帧 = 1 秒）
+3 每段给这些字段：
+   label      中文动作名，只用于日志，可以自由写
+   prompt     英文提示词，直接交给生成模型
+   frames     这段占多少帧（20 帧 = 1 秒）
+   source     原句里对应的那几个字，**必须逐字摘录，不能改写、不能翻译**
+              各段的 source 依次拼起来要覆盖原句的主要部分
+   direction  这段的运动方向，取 forward / backward / left / right / in_place / circle / null
+   object     动作涉及的对象名词（椅子、桌子、杯子、门……），没有就 null
+   relation   与对象的关系，取 near / front / behind / left / right / toward / away / null
+   speed      slow / normal / fast / null
+
+## 原文片段（source）的规则
+这是最容易做错的一条：
+1 必须逐字来自原句，标点也要一致。做不到逐字，就留空字符串 ""。
+2 不许出现原句里没有的字，不许改写、不许概括、不许翻译。
+3 各段 source 按顺序拼接，应当接近原句全文；漏掉的部分就是你没规划到的部分。
+4 如果整句只描述一个含糊的动作（例如「做一套动作」），只输出一段，source 就是整句。
 
 ## prompt 的写法
 生成模型只懂英文，而且它看不到整句，只看到你给的这一句。所以每一条都要自足：
@@ -72,8 +85,10 @@ SYSTEM = """你是人体动作分镜器。给你一句中文描述，输出一�
 ## 输出格式
 {
   "segments": [
-    {"label": "挥手打招呼", "prompt": "a person waves goodbye with the right hand", "frames": 40},
-    {"label": "转身", "prompt": "a person turns around in place", "frames": 40}
+    {"label": "挥手打招呼", "prompt": "a person waves goodbye with the right hand", "frames": 40,
+     "source": "挥手打招呼", "direction": "forward", "object": null, "relation": null, "speed": "normal"},
+    {"label": "转身", "prompt": "a person turns around in place", "frames": 40,
+     "source": "转身", "direction": "in_place", "object": null, "relation": null, "speed": "normal"}
   ],
   "transitions": [
     {"junction": 1, "duration_s": 0.4, "ease": "ease_in_out"}
@@ -133,6 +148,12 @@ def _parse(txt):
     raise ValueError("回复里没有 JSON：%s" % txt[:200])
 
 
+def _enum(v, allowed):
+    """只接受枚举内的值，其余一律 null。"""
+    t = str(v).strip().lower() if v is not None else ""
+    return t if t in allowed else None
+
+
 def plan(sentence):
     """一句中文 → (段落列表, 过渡列表, 地形)。
 
@@ -146,10 +167,20 @@ def plan(sentence):
         if not prompt:
             raise ValueError("有一个段落没有英文提示词：%s" % s)
         frames = int(s.get("frames") or 40)
+        src = str(s.get("source") or "").strip()
+        if src and src not in sentence:
+            src = ""            # 不是原句子串就作废，不假装对上了
         segs.append({
             "label": str(s.get("label", "")).strip() or prompt,
             "prompt": prompt,
             "frames": max(20, min(90, frames)),
+            "source": src,
+            "direction": _enum(s.get("direction"),
+                               ("forward", "backward", "left", "right", "in_place", "circle")),
+            "object": (str(s.get("object")).strip() or None) if s.get("object") else None,
+            "relation": _enum(s.get("relation"),
+                              ("near", "front", "behind", "left", "right", "toward", "away")),
+            "speed": _enum(s.get("speed"), ("slow", "normal", "fast")),
         })
     if not segs:
         raise ValueError("LLM 没有给出任何段落")

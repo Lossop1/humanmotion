@@ -51,6 +51,17 @@ def _cap_lookup(prompt):
     return None
 
 
+_FILLERS = ("一个人", "然后", "接着", "最后", "再", "先", "一边", "并且", "着", "了", "的")
+
+
+def _norm_text(t):
+    """去掉虚词与标点，只留下承载动作的字，用于算原文覆盖率。"""
+    import re as _re
+    for w in _FILLERS:
+        t = t.replace(w, "")
+    return _re.sub(r"[，,。.、；;！!？?\s]", "", t)
+
+
 def step_a01(job, cfg):
     req = job.write_request(cfg)
     job.log("A01 指令与配置已保存  job_id=%s" % job.job_id)
@@ -66,18 +77,34 @@ def step_a02(job, sentence):
     segs, trans, terrain = planner.plan(sentence)
     out = []
     warnings = []
+    covered = 0
     for i, s in enumerate(segs, 1):
-        seg = sb_schema.blank_segment("seg_%03d" % i, i, s["label"], sentence)
+        src = s.get("source") or ""
+        seg = sb_schema.blank_segment("seg_%03d" % i, i, s["label"], src or sentence)
         seg["duration_frames"] = int(s["frames"])
         seg["text_gen"] = s["prompt"]
+        seg["facing"] = s.get("direction")
+        seg["object"] = s.get("object")
+        seg["relation"] = s.get("relation")
+        seg["speed"] = s.get("speed")
         seg["provenance"] = {
             "action": "planner_llm(label)",
-            "source_text": "fallback:whole_sentence",
+            "source_text": "planner_llm(substring)" if src else "fallback:whole_sentence",
             "duration_frames": "planner_llm",
             "text_gen": "planner_llm",
+            "facing": "planner_llm" if s.get("direction") else "null",
         }
-        warnings.append("seg_%03d 的 source_text 暂用整句（planner 未切分原文）" % i)
+        if src:
+            covered += len(src)
+        else:
+            warnings.append("seg_%03d 未给出原文片段，source_text 退回整句" % i)
         out.append(seg)
+    coverage = len(_norm_text("".join(x.get("source") or "" for x in segs))) / max(
+        len(_norm_text(sentence)), 1)
+    if coverage < 0.6:
+        warnings.append("原文覆盖率 %.0f%%（各段 source 拼接占原句比例），可能有内容未规划"
+                        % (100 * coverage))
+    job.log("A02 原文覆盖率 %.0f%%（%d 段）" % (100 * coverage, len(out)))
     sb = {
         "job_id": job.job_id,
         "sentence": sentence,
