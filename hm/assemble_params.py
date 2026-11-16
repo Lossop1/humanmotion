@@ -122,7 +122,18 @@ def build(job, sb, verbose=True):
         _m = __import__("os").environ.get("HM_FIT_METHOD", "opt")
         _ref = int(__import__("os").environ.get("HM_FIT_REFINE", "0"))
         _it = int(__import__("os").environ.get("HM_FIT_ITERS", "8"))
-        _, P = FM.fit(placed, method=_m, refine=_ref, iters=_it)
+        from hm import cache as _cache
+        _ck = _cache.key(("fit", np.asarray(placed).tobytes(), _m, _it, _ref))
+        _cf = _cache.get_file("fit", _ck, "params.npy") if _cache.enabled() else None
+        if _cf is not None:
+            P = np.load(_cf)
+        else:
+            _, P = FM.fit(placed, method=_m, refine=_ref, iters=_it)
+            if _cache.enabled():
+                import tempfile as _tf
+                _tmp = Path(_tf.mkdtemp()) / "p.npy"
+                np.save(_tmp, np.asarray(P))
+                _cache.put_file("fit", _ck, "params.npy", _tmp)
         P = np.asarray(P, dtype=np.float64)
         pieces.append(placed)
         seg_params.append(P)
@@ -269,10 +280,23 @@ def run(job, sb):
         shutil.copyfile(faces, rd / "faces.npy")
     import os as _os
     quality = _os.environ.get("HM_RENDER_QUALITY", "fast")
-    subprocess.run([str(config.BLENDER), "--background", "--python",
-                    str(ROOT / "hm" / "render_blender.py"), "--", str(rd), str(rd / "r"),
-                    "video", "", "0.78", "full", "1.0", quality],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    from hm import cache as _cache
+    _rk = _cache.key(("render", np.asarray(params).tobytes(), quality,
+                      _os.environ.get("HM_RENDER_RES", ""),
+                      _os.environ.get("HM_RENDER_SAMPLES", "")))
+    _hit = _cache.get_file("render", _rk, "out.mp4") if _cache.enabled() else None
+    if _hit is not None:
+        import shutil as _sh
+        (rd / "r").mkdir(parents=True, exist_ok=True)
+        _sh.copyfile(_hit, rd / "r" / "out.mp4")
+        job.log("A18 渲染命中缓存（参数与画面设置未变）")
+    else:
+        subprocess.run([str(config.BLENDER), "--background", "--python",
+                        str(ROOT / "hm" / "render_blender.py"), "--", str(rd), str(rd / "r"),
+                        "video", "", "0.78", "full", "1.0", quality],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if _cache.enabled() and (rd / "r" / "out.mp4").exists():
+            _cache.put_file("render", _rk, "out.mp4", rd / "r" / "out.mp4")
     mp4 = rd / "r" / "out.mp4"
     if mp4.exists():
         shutil.copyfile(mp4, rd / "final.mp4")

@@ -202,7 +202,25 @@ def step_a07(job, sb, k):
         n = int(seg["duration_frames"] or 40)
         model = (seg.get("route") or {}).get("model") or config.DEFAULT_MODEL
         t0 = time.time()
-        feats = generate.generate([prompt] * k, [n] * k, name=model)
+        from hm import cache as _cache
+        ck = _cache.key(("gen", model, prompt, n, k))
+        cached = _cache.get_json("gen", ck) if _cache.enabled() else None
+        if cached is not None:
+            feats = [np.load(_cache.get_file("gen", ck, "cand%d.npy" % i))
+                     for i in range(len(cached["shapes"]))]
+            hit = True
+        else:
+            feats = generate.generate([prompt] * k, [n] * k, name=model)
+            hit = False
+            if _cache.enabled():
+                import tempfile
+                tmpd = Path(tempfile.mkdtemp())
+                for i, F in enumerate(feats):
+                    np.save(tmpd / ("c%d.npy" % i), np.asarray(F))
+                    _cache.put_file("gen", ck, "cand%d.npy" % i, tmpd / ("c%d.npy" % i))
+                _cache.put_json("gen", ck, {"shapes": [list(np.shape(np.asarray(F))) for F in feats],
+                                            "model": model, "prompt": prompt,
+                                            "frames": n, "k": k})
         dt = round(time.time() - t0, 1)
         cands = []
         for i, F in enumerate(feats, 1):
@@ -218,7 +236,8 @@ def step_a07(job, sb, k):
                 "seed_control": "unsupported",
             })
         seg["candidates"] = cands
-        job.log("A07 %s 生成 %d 个候选，每批 %.1f 秒" % (seg["segment_id"], k, dt))
+        job.log("A07 %s 生成 %d 个候选，每批 %.1f 秒%s" % (seg["segment_id"], k, dt,
+                                                   "（缓存）" if hit else ""))
     return sb
 
 
