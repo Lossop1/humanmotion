@@ -179,11 +179,37 @@ def step_a05(job, sb):
 
 
 def step_a06(job, sb):
-    """A06：提示词构造。目前沿用 planner 给的英文提示词，成对保存。"""
+    """A06：提示词构造。
+
+    规则：如果能力表里有这个动作，并且它在这个后端上是被验证过的，
+    就用能力表里那句**被测过的措辞**，而不是 planner 现场编的措辞。
+    措辞差异对生成质量的影响，比我们想象的大的多（坐下就踩过）。
+    """
+    from hm import backends as _bk
+    table = _bk.load_table()
+    reused = 0
     for seg in sb["segments"]:
-        seg["text_gen_final"] = seg["text_gen"]
-        seg["template_version"] = "planner_prompt_v1"
-    job.log("A06 提示词：沿用 planner 输出，已与 source_text 成对保存")
+        prompt = seg["text_gen"]
+        model = (seg.get("route") or {}).get("model")
+        _key, entry = _bk.match_entry(table, prompt)
+        final, version = prompt, "planner_prompt_v1"
+        if entry:
+            m = (entry.get("models") or {}).get(model) or {}
+            status = {"support": "supported"}.get(m.get("status"), m.get("status"))
+            tested = entry.get("prompt")
+            # 能力表里可能登记的是复合动作（"sits down and stands back up"），
+            # 直接复用会把一段变成两个动作，所以带连接词的一律不复用
+            compound = ((" and " in (" %s " % tested.lower()))
+                        if tested else False) or entry.get("prompt_scope") == "composite"
+            if (tested and not compound and status == "supported"
+                    and tested.lower() != prompt.lower()):
+                final, version = tested, "capability_tested_prompt"
+                reused += 1
+                job.log("A06 %s 采用能力表测过的提示词：%r（planner 原为 %r）"
+                        % (seg["segment_id"], tested, prompt))
+        seg["text_gen_final"] = final
+        seg["template_version"] = version
+    job.log("A06 提示词：%d/%d 段沿用能力表测过的措辞" % (reused, len(sb["segments"])))
     return sb
 
 
@@ -360,6 +386,25 @@ def step_a12_a13(job, sb, max_retry=2):
                               "reason": seg.get("support_reason", "无候选")})
             continue
         ok = [c for c in cands if c["decision"] == "pass"]
+        # 动作签名：几何通过的候选里，优先挑「确实做出来这个动作」的
+        try:
+            from hm import signature as _sig
+            _prompt = seg.get("text_gen_final") or seg.get("text_gen") or ""
+
+            def _sig_pass(c):
+                n = int(c["candidate_id"].split("_")[-1])
+                J = np.load(job.dir / "segments" / seg["segment_id"] /
+                            ("candidate_%d" % n) / "joints22.npy")
+                verdict, bad, det = _sig.check(_prompt, _sig.signature(J))
+                return verdict
+
+            _sig_of = {c['candidate_id']: _sig_pass(c) for c in ok}
+            _n_good = sum(1 for v in _sig_of.values() if v is True)
+            if _n_good < len(ok):
+                job.log('A12 %s 动作签名（只作排序参考）：%d/%d 个候选看起来做出了该动作'
+                        % (seg['segment_id'], _n_good, len(ok)))
+        except Exception as _e:
+            job.log("A12 %s 动作签名跳过：%s" % (seg["segment_id"], str(_e)[:80]))
         if not ok:
             # A13：按说明书失败表给一个主要类型
             reasons = []
@@ -379,14 +424,16 @@ def step_a12_a13(job, sb, max_retry=2):
         # 软排序：骨长偏差优先，其次单帧姿态变化，再其次路径长度
         def key(c):
             m = c["metrics"]
-            return (m.get("bone_length_jitter_m") or 9e9,
+            _ok = _sig_of.get(c["candidate_id"]) if "_sig_of" in dir() else None
+            return (0 if _ok is True else 1,
+                    m.get("bone_length_jitter_m") or 9e9,
                     m.get("pose_rate_max") or 9e9,
                     m.get("root_path_length") or 9e9)
         ok.sort(key=key)
         seg["selected"] = ok[0]["candidate_id"]
         seg["segment_decision"] = "pass"
         seg["ranking"] = [c["candidate_id"] for c in ok]
-        job.log("A12 %s 选中 %s（排序依据：骨长偏差、单帧姿态变化、路径长度）"
+        job.log("A12 %s 选中 %s（排序依据：动作签名、骨长偏差、单帧姿态变化、路径长度）"
                 % (seg["segment_id"], seg["selected"]))
     job.save_json("storyboard.json", sb)
     return sb
