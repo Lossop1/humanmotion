@@ -1,0 +1,219 @@
+{
+ "backend": "momask",
+ "criteria_version": "criteria_v5",
+ "k_per_action": 4,
+ "probes": {
+  "walk": {
+   "prompt": "a person walks forward",
+   "samples": 4,
+   "metrics": {
+    "rate_med": {
+     "median": 13.834,
+     "p95": 14.917,
+     "max": 15.09
+    },
+    "rate_p95": {
+     "median": 20.091,
+     "p95": 21.644,
+     "max": 21.905
+    },
+    "rate_max": {
+     "median": 23.573,
+     "p95": 25.424,
+     "max": 25.65
+    },
+    "lean_med": {
+     "median": 1.801,
+     "p95": 2.203,
+     "max": 2.272
+    },
+    "lean_p95": {
+     "median": 3.416,
+     "p95": 4.539,
+     "max": 4.736
+    },
+    "backward_m": {
+     "median": -3.323,
+     "p95": -3.295,
+     "max": -3.294
+    },
+    "bone_rel_spread": {
+     "median": 0.011,
+     "p95": 0.012,
+     "max": 0.012
+    }
+   }
+  },
+  "stand": {
+   "prompt": "a person stands still",
+   "samples": 4,
+   "metrics": {
+    "rate_med": {
+     "median": 0.842,
+     "p95": 0.925,
+     "max": 0.937
+    },
+    "rate_p95": {
+     "median": 2.449,
+     "p95": 2.69,
+     "max": 2.72
+    },
+    "rate_max": {
+     "median": 2.938,
+     "p95": 3.187,
+     "max": 3.212
+    },
+    "lean_med": {
+     "median": 1.51,
+     "p95": 2.269,
+     "max": 2.401
+    },
+    "lean_p95": {
+     "median": 2.014,
+     "p95": 2.711,
+     "max": 2.825
+    },
+    "backward_m": {
+     "median": 0.004,
+     "p95": 0.006,
+     "max": 0.006
+    },
+    "bone_rel_spread": {
+     "median": 0.004,
+     "p95": 0.005,
+     "max": 0.005
+    }
+   }
+  },
+  "turn": {
+   "prompt": "a person turns around in place",
+   "samples": 4,
+   "metrics": {
+    "rate_med": {
+     "median": 5.311,
+     "p95": 6.079,
+     "max": 6.175
+    },
+    "rate_p95": {
+     "median": 16.452,
+     "p95": 19.201,
+     "max": 19.354
+    },
+    "rate_max": {
+     "median": 20.826,
+     "p95": 46.409,
+     "max": 50.603
+    },
+    "lean_med": {
+     "median": 1.997,
+     "p95": 2.439,
+     "max": 2.485
+    },
+    "lean_p95": {
+     "median": 5.466,
+     "p95": 7.415,
+     "max": 7.612
+    },
+    "backward_m": {
+     "median": -0.168,
+     "p95": -0.03,
+     "max": -0.006
+    },
+    "bone_rel_spread": {
+     "median": 0.02,
+     "p95": 0.029,
+     "max": 0.03
+    }
+   }
+  },
+  "wave": {
+   "prompt": "a person waves goodbye with the right hand",
+   "samples": 4,
+   "metrics": {
+    "rate_med": {
+     "median": 5.099,
+     "p95": 7.355,
+     "max": 7.735
+    },
+    "rate_p95": {
+     "median": 20.036,
+     "p95": 22.668,
+     "max": 22.9
+    },
+    "rate_max": {
+     "median": 23.117,
+     "p95": 26.204,
+     "max": 26.255
+    },
+    "lean_med": {
+     "median": 1.812,
+     "p95": 2.317,
+     "max": 2.34
+    },
+    "lean_p95": {
+     "median": 2.899,
+     "p95": 3.654,
+     "max": 3.701
+    },
+    "backward_m": {
+     "median": 0.011,
+     "p95": 0.026,
+     "max": 0.029
+    },
+    "bone_rel_spread": {
+     "median": 0.005,
+     "p95": 0.006,
+     "max": 0.006
+    }
+   }
+  },
+  "jump": {
+   "prompt": "a person jumps up once in place",
+   "samples": 4,
+   "metrics": {
+    "rate_med": {
+     "median": 4.682,
+     "p95": 6.568,
+     "max": 6.849
+    },
+    "rate_p95": {
+     "median": 13.711,
+     "p95": 19.471,
+     "max": 20.286
+    },
+    "rate_max": {
+     "median": 20.522,
+     "p95": 27.697,
+     "max": 28.846
+    },
+    "lean_med": {
+     "median": 12.162,
+     "p95": 16.446,
+     "max": 17.097
+    },
+    "lean_p95": {
+     "median": 28.862,
+     "p95": 31.293,
+     "max": 31.536
+    },
+    "backward_m": {
+     "median": 0.067,
+     "p95": 0.108,
+     "max": 0.112
+    },
+    "bone_rel_spread": {
+     "median": 0.015,
+     "p95": 0.015,
+     "max": 0.015
+    }
+   }
+  }
+ },
+ "thresholds": {
+  "rate_p95_deg_per_frame": 29.47,
+  "lean_p95_deg": 40.68,
+  "bone_rel_spread": 0.04,
+  "note": "由本后端探针样本的 p95 推得，含 30% 余量；换后端需重跑"
+ },
+ "created": "2026-11-16 15:32:34"
+}

@@ -26,11 +26,14 @@ TABLE_VERSION = "capability_v4"
 
 BACKENDS = {
     "momask": {"kind": "text2motion", "entry": "hm.generate.generate", "max_frames": 196,
-               "supports_seed": False, "supports_inpainting": False, "note": "主力后端，语义正确率最高"},
+               "supports_seed": False, "supports_inpainting": False,
+               "contract": {"output": "hml263", "fps": 20, "unit": "m", "joints": 22}, "note": "主力后端，语义正确率最高"},
     "mdm": {"kind": "text2motion", "entry": "hm.generate.generate", "max_frames": 196,
-            "supports_seed": True, "supports_inpainting": True, "note": "支持 inpainting，可用于接前段末帧的条件生成"},
+            "supports_seed": True, "supports_inpainting": True,
+            "contract": {"output": "hml263", "fps": 20, "unit": "m", "joints": 22}, "note": "支持 inpainting，可用于接前段末帧的条件生成"},
     "motionlcm": {"kind": "text2motion", "entry": "hm.generate.generate", "max_frames": 196,
-                  "supports_seed": True, "supports_inpainting": False, "note": "少步采样，速度优先，当前未做对照"},
+                  "supports_seed": True, "supports_inpainting": False,
+                  "contract": {"output": "hml263", "fps": 20, "unit": "m", "joints": 22}, "note": "少步采样，速度优先，当前未做对照"},
 }
 
 DEFAULT = "momask"
@@ -102,6 +105,9 @@ def resolve(prompt, prefer=None):
     models = {m: d for m, d in v.get("models", {}).items() if m in BACKENDS}
     if not models:
         return DEFAULT, "unverified", "能力表里的后端都未注册", {"action": key}
+    # 复合动作（"sits down and stands back up"）只对原句成立，不能外推到单动作
+    if v.get("prompt_scope") == "composite":
+        return DEFAULT, "unverified", "能力表条目是复合动作，不能外推到单段", {"action": key}
     best = max(models, key=lambda m: models[m].get("pass_rate", 0))
     if prefer and prefer in models:
         best = prefer
