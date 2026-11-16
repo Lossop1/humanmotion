@@ -12,6 +12,10 @@
     3 A05 路由会自动按新表选择，无需改代码
 
 没有登记的后端一律拒绝，不做静默回退——回退会让「它到底用了什么」无从追溯。
+
+不管速度。同一后端在 H100 与 CPU 上差几十倍，那是硬件的事；
+路由只看「这个后端能不能做这个动作」，不看它跑多快。
+能力表也非必需：用户给了就按表选，没给就直接生成，用结果说话。
 """
 import json
 import re
@@ -22,14 +26,11 @@ TABLE_VERSION = "capability_v4"
 
 BACKENDS = {
     "momask": {"kind": "text2motion", "entry": "hm.generate.generate", "max_frames": 196,
-               "supports_seed": False, "supports_inpainting": False,
-               "cost_s_per_clip": 0.05, "note": "主力后端，语义正确率最高"},
+               "supports_seed": False, "supports_inpainting": False, "note": "主力后端，语义正确率最高"},
     "mdm": {"kind": "text2motion", "entry": "hm.generate.generate", "max_frames": 196,
-            "supports_seed": True, "supports_inpainting": True,
-            "cost_s_per_clip": 17.0, "note": "支持 inpainting；实测一段 2 候选约 35 秒"},
+            "supports_seed": True, "supports_inpainting": True, "note": "支持 inpainting，可用于接前段末帧的条件生成"},
     "motionlcm": {"kind": "text2motion", "entry": "hm.generate.generate", "max_frames": 196,
-                  "supports_seed": True, "supports_inpainting": False,
-                  "cost_s_per_clip": 3.0, "note": "少步采样，速度优先，当前未做对照"},
+                  "supports_seed": True, "supports_inpainting": False, "note": "少步采样，速度优先，当前未做对照"},
 }
 
 DEFAULT = "momask"
@@ -104,12 +105,6 @@ def resolve(prompt, prefer=None):
     best = max(models, key=lambda m: models[m].get("pass_rate", 0))
     if prefer and prefer in models:
         best = prefer
-    # 成本约束：慢后端只有在通过率明显更高时才值得换
-    fast = min(models, key=lambda m: BACKENDS[m].get("cost_s_per_clip", 1.0))
-    margin = float(__import__("os").environ.get("HM_ROUTE_MARGIN", "0.15"))
-    gain = models[best].get("pass_rate", 0) - models[fast].get("pass_rate", 0)
-    if best != fast and gain < margin:
-        best = fast
     status = models[best].get("status", "unverified")
     rate = models[best].get("pass_rate")
     return best, status, "能力表：%s 通过率 %.2f" % (key, rate or 0.0), {
