@@ -150,16 +150,31 @@ def step_a04(job, sb):
 
 
 def step_a05(job, sb):
-    """A05：模型路由。没有能力表，一律默认后端并把置信度标为低。"""
+    """A05：按能力表逐段选后端。未注册的后端直接拒绝，不静默回退。"""
+    from hm import backends
+    picked = []
     for seg in sb["segments"]:
+        prompt = seg.get("text_gen") or ""
+        model, status, reason, detail = backends.resolve(prompt)
+        spec = backends.BACKENDS.get(model, {})
         seg["route"] = {
-            "model": config.DEFAULT_MODEL,
+            "model": model,
             "model_version": "unknown",
-            "confidence": "low",
-            "reason": "尚无可按动作类别排序的能力表，采用默认后端",
+            "confidence": "high" if status == "support" or status == "supported" else "low",
+            "reason": reason,
+            "support_status": status,
+            "pass_rate": detail.get("pass_rate"),
+            "max_frames": spec.get("max_frames"),
             "table_version": CAPABILITY_VERSION,
         }
-    job.log("A05 路由：全部默认 %s，置信度 low" % config.DEFAULT_MODEL)
+        picked.append("%s→%s(%s)" % (seg["segment_id"], model, status))
+        # 能力表里帧数上限更短时，截短，不交给后端去报错
+        cap = spec.get("max_frames")
+        if cap and seg.get("duration_frames") and int(seg["duration_frames"]) > int(cap):
+            job.log("A05 %s 帧数 %d 超过 %s 上限 %d，截到上限"
+                    % (seg["segment_id"], int(seg["duration_frames"]), model, int(cap)))
+            seg["duration_frames"] = int(cap)
+    job.log("A05 路由（按能力表逐段选）：" + "、".join(picked))
     return sb
 
 
@@ -185,8 +200,9 @@ def step_a07(job, sb, k):
             continue
         prompt = seg["text_gen_final"]
         n = int(seg["duration_frames"] or 40)
+        model = (seg.get("route") or {}).get("model") or config.DEFAULT_MODEL
         t0 = time.time()
-        feats = generate.generate([prompt] * k, [n] * k)
+        feats = generate.generate([prompt] * k, [n] * k, name=model)
         dt = round(time.time() - t0, 1)
         cands = []
         for i, F in enumerate(feats, 1):
