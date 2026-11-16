@@ -246,6 +246,19 @@ def step_a06(job, sb):
                     continue
                 if entry["best_rate"] > best_rate:
                     best_item, best_rate = entry["best"], entry["best_rate"]
+            # 只在 planner 的写法「没测过」时才替换；它自己测过且不差就用它，
+            # 否则会把本来对的措辞也改掉（实测替换 18 段后交界中位反而升到 50 度）
+            _cur_tested = None
+            for _a, _e in bank.items():
+                for _r in _e.get("phrasings", []):
+                    if _r["text"].strip().lower() == cur.strip().lower():
+                        _cur_tested = max((m.get("rate", 0) for m in _r["models"].values()),
+                                          default=0)
+                        break
+                if _cur_tested is not None:
+                    break
+            if _cur_tested is not None and _cur_tested >= 0.5:
+                best_item = None
             if best_item and best_item.strip().lower() != cur.strip().lower():
                 seg["text_gen_final"] = best_item
                 seg["template_version"] = "prompt_bank"
