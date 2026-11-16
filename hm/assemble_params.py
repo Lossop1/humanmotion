@@ -262,6 +262,12 @@ def run(job, sb):
     (d / "bounds.json").write_text(json.dumps(bj, ensure_ascii=False, indent=1), encoding="utf-8")
     from hm import gates as GT
     gok, gr, gbad = GT.check(V, np.asarray(Jn), params)
+    from hm import gates as GT
+    _jj = GT.junction_jerk(Jn, junctions, bounds)
+    for _x in _jj:
+        if _x["suspect"]:
+            job.log("A16 交界可疑：%s 峰值 %.1f 度/帧（前段中位的 %.1f 倍）"
+                    % ("→".join(_x["between"] or []), _x["peak_deg_per_frame"], _x["ratio"]))
     job.log("A16 自检：rot 中位 %.2f 度/帧 ｜ hf_ratio %.2f ｜ %s"
             % (gr["rot_med"], gr["hf_ratio"],
                "通过" if gok else "不通过：" + ",".join(gbad)))

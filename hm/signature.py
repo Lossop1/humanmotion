@@ -75,6 +75,16 @@ def signature(J):
     pelvis_up = float(J[:, PELVIS, 1].max() - J[0, PELVIS, 1])
     pelvis_end_drop = float(J[0, PELVIS, 1] - J[-1, PELVIS, 1])
     yaws = _unwrap([_yaw(f) for f in J])
+    # 躯干前倾：骨盆→脊柱3 与竖直方向的夹角
+    tv = J[:, 9] - J[:, 0]
+    tv = tv / np.maximum(np.linalg.norm(tv, axis=1, keepdims=True), 1e-9)
+    lean = np.degrees(np.arccos(np.clip(tv[:, 1], -1, 1)))
+    # 沿「朝向反方向」的净位移，正数表示在后退
+    fwd = J[0, 10] - J[0, 7]
+    fwd[1] = 0.0
+    nf = float(np.linalg.norm(fwd))
+    fwd = fwd / nf if nf > 1e-9 else np.array([0.0, 0.0, 1.0])
+    back = float(-(J[-1, 0] - J[0, 0]) @ fwd)
     knee = [_knee_angle(f, 1, 4, 7) for f in J]
     return {
         "disp_m": float(horizon.max()),
@@ -85,6 +95,9 @@ def signature(J):
         "pelvis_end_drop": pelvis_end_drop,
         "yaw_deg": float(abs(yaws[-1] - yaws[0])),
         "knee_range": float(max(knee) - min(knee)),
+        "lean_median": float(np.median(lean)),
+        "lean_max": float(lean.max()),
+        "backward_m": back,
     }
 
 
@@ -99,6 +112,9 @@ RULES = [
      "wrist_above", 0.05, "手应举过肩"),
     ("sit|sits|sitting|seated", "pelvis_end_drop", 0.18, "结束时重心应降低"),
     ("crouch|squat|bend|bending|kneel|kneeling", "pelvis_drop", 0.18, "应降低重心"),
+    # 校准对：MDM 转身前倾中位 8.9 度、后退 0.97 米；MoMask 3.6 度、后退 -0.05 米
+    ("turns around|turn around", "lean_median", 6.0, "转身应站直，不该弓着"),
+    ("turns around|turn around", "backward_m", 0.3, "转身不该边退边走"),
 ]
 
 
