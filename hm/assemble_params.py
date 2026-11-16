@@ -106,7 +106,13 @@ def joints_of_params(P):
 
 def build(job, sb, verbose=True):
     """返回 (params (T,85), bounds, verts)"""
-    chosen = FJ.choose_combination(job, sb, verbose=verbose)
+    # 单一来源：A12 选中的候选就是最终候选。
+    # 之前这里又跑一次 DP，把 A12 的选择换掉了（seg_001 cand_04→cand_01、seg_002 cand_05→cand_03），
+    # 记录与成片不符，质量判断也就失效了。
+    _fsb = [(sg, int(str(sg["selected"]).split("_")[-1]))
+            for sg in sb["segments"] if sg.get("selected")]
+    chosen = (_fsb if len(_fsb) == len(sb["segments"])
+              else FJ.choose_combination(job, sb, verbose=verbose))
 
     pieces, seg_params, bounds = [], [], []
     prev = None

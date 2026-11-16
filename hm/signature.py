@@ -86,7 +86,18 @@ def signature(J):
     fwd = fwd / nf if nf > 1e-9 else np.array([0.0, 0.0, 1.0])
     back = float(-(J[-1, 0] - J[0, 0]) @ fwd)
     knee = [_knee_angle(f, 1, 4, 7) for f in J]
+    fwd = J[0, 10] - J[0, 7]
+    fwd[1] = 0.0
+    nf = float(np.linalg.norm(fwd))
+    fwd = fwd / nf if nf > 1e-9 else np.array([0.0, 0.0, 1.0])
+    rw = J[:, 21, :] - J[:, 16, :]          # 右手腕相对右肩
+    reach = float((rw @ fwd).max())
+    wspeed = float((np.linalg.norm(np.diff(J[:, 21, :], axis=0), axis=1) * 20).max()) if T > 1 else 0.0
+    stance = float(np.mean(np.linalg.norm(J[:, 7, :] - J[:, 8, :], axis=1)))
     return {
+        "punch_reach": reach,
+        "wrist_speed": wspeed,
+        "stance_width": stance,
         "disp_m": float(horizon.max()),
         "speed_mps": speed,
         "wrist_above": wrist_above,

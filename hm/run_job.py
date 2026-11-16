@@ -419,6 +419,24 @@ def step_a08_a10(job, sb, ref):
     return sb
 
 
+def _goal_bonus(job, seg, cand):
+    """动作偏好分：越接近目标动作分越低。只用批内相对量，不用绝对阈值。"""
+    import re as _re
+    from hm import signature as _sig
+    prompt = (seg.get('text_gen_final') or '').lower()
+    n = int(cand['candidate_id'].split('_')[-1])
+    J = np.load(job.dir / 'segments' / seg['segment_id'] / ('candidate_%d' % n) / 'joints22.npy')
+    s = _sig.signature(J)
+    score = 0.0
+    if _re.search(r'punch|kick|throw', prompt):
+        score -= 3.0 * s['punch_reach']
+    if _re.search(r'jump|hop', prompt):
+        score -= 2.0 * s['pelvis_up']
+    # 站距偏离 0.35 米越多越差（0.35 取自站立与并步的常见值）
+    score += 2.0 * abs(s['stance_width'] - 0.35)
+    return score
+
+
 def step_a12_a13(job, sb, max_retry=2):
     """A12 淘汰硬失败并排序；A13 对全失败的段做分类。"""
     for seg in sb["segments"]:
@@ -470,6 +488,7 @@ def step_a12_a13(job, sb, max_retry=2):
             m = c["metrics"]
             _ok = _sig_of.get(c["candidate_id"]) if "_sig_of" in dir() else None
             return (0 if _ok is True else 1,
+            _goal_bonus(job, seg, c),
                     m.get("bone_length_jitter_m") or 9e9,
                     m.get("pose_rate_max") or 9e9,
                     m.get("root_path_length") or 9e9)
