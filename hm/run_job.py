@@ -580,6 +580,29 @@ def repair_junctions(job, sb, ref, pose_th, k_extra=6, gap_limit=90.0):
         cur_gap = gap_to(cur)
         job.log("A12 交界候选：%s→%s 原始姿态差 %.0f 度"
                 % (A["segment_id"], B["segment_id"], cur_gap))
+        # 截尾：末段常在收势，截掉几帧能让过渡更早开始。
+        # 只在「交界变小」且「本段动作签名仍成立」时采纳，实测 s03 101→86 度、
+        # s19 反而变大，所以必须逐处实测而不是一刀切。
+        if cur_gap > 60:
+            from hm import signature as _sig
+            _best_k, _best_gap = 0, cur_gap
+            for _k in (2, 4, 6, 8, 12):
+                if _k >= len(Ja) - 8:
+                    break
+                _K = Ja[: len(Ja) - _k]
+                _ok, _bad, _d = _sig.check(A.get("text_gen_final") or "", _sig.signature(_K))
+                if _ok is False:
+                    continue
+                _b2, _ = FJ.align_pair(_K, np.load(job.cand_dir(B["segment_id"],
+                                                               int(str(B["selected"]).split("_")[-1])) / "joints22.npy"))
+                _g = FJ.pose_gap(_K[-1], _b2[0])
+                if _g < _best_gap - 8.0:
+                    _best_k, _best_gap = _k, _g
+            if _best_k:
+                A["trim_tail"] = _best_k
+                job.log("A12 截尾：%s 截 %d 帧，交界 %.0f → %.0f 度"
+                        % (A["segment_id"], _best_k, cur_gap, _best_gap))
+                cur_gap = _best_gap
         if cur_gap <= gap_limit:
             continue
         prompt = B.get("text_gen_final")

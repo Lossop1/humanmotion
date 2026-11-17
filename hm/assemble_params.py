@@ -119,6 +119,9 @@ def build(job, sb, verbose=True):
     for seg, n in chosen:
         J = np.load(job.dir / "segments" / seg["segment_id"] /
                     ("candidate_%d" % n) / "joints22.npy")
+        _k = int(seg.get("trim_tail") or 0)
+        if 0 < _k < len(J) - 8:
+            J = J[: len(J) - _k]
         if prev is None:
             placed, dyaw = J, 0.0
         else:
