@@ -145,6 +145,75 @@ def explain(sentence, job_id=None):
     return 0
 
 
+def compare(sentence, k=6, job_id=None):
+    """预测对照：--explain 说的与实际跑出来的并排看。
+
+    预测与交付对不上，说明说明书写错了（例如合并规则、可支持性判定），这比视频难看更严重。
+    """
+    import contextlib
+    import io as _io
+    import json as _json
+    import re as _re
+
+    from hm import signature
+
+    base = job_id or "cmp"
+    _buf = _io.StringIO()
+    with contextlib.redirect_stdout(_buf):
+        pjob, psb = run_full.plan_only(sentence, job_id=base + "_plan")
+    pred = {}
+    for i, seg in enumerate(psb["segments"]):
+        prompt = seg.get("text_gen_final") or ""
+        fields = [f for pat, f, _th, _w, _k in signature.RULES if _re.search(pat, prompt.lower())]
+        pred[i] = dict(prompt=prompt, support=seg.get("support_status"),
+                       fields=fields, frames=seg.get("duration_frames"))
+    pairs, i = [], 0
+    while i + 1 < len(psb["segments"]):
+        a = int(psb["segments"][i].get("duration_frames") or 40)
+        b = int(psb["segments"][i + 1].get("duration_frames") or 40)
+        if a <= 56 and b <= 56:
+            pairs.append((i, i + 1))
+            i += 2
+        else:
+            i += 1
+    print()
+    print("  原句          %s" % sentence)
+    print("  预测          规划 %d 段，%d 处合并 → 成片约 %d 段；可判 %d 段"
+          % (len(psb["segments"]), len(pairs), len(psb["segments"]) - len(pairs),
+             sum(1 for v in pred.values() if v["fields"])))
+
+    code, info = run_one(sentence, job_id=base + "_run", k=k)
+    d = Path(info.get("dir", ""))
+    rows = []
+    sb2 = _json.loads((d / "storyboard.json").read_text(encoding="utf-8"))
+    bj = _json.loads((d / "assembled" / "bounds.json").read_text(encoding="utf-8")) \
+        if (d / "assembled" / "bounds.json").exists() else {}
+    for seg in sb2["segments"]:
+        sel = seg.get("selected")
+        verdict = "未选中"
+        if sel:
+            n = int(str(sel).split("_")[-1])
+            jp = d / "segments" / seg["segment_id"] / ("candidate_%d" % n) / "joints22.npy"
+            if jp.exists():
+                ok, bad, _det = signature.check(seg.get("text_gen_final") or "",
+                                                signature.signature(__import__("numpy").load(jp)))
+                verdict = "无法判" if ok is None else ("通过" if ok else "可疑")
+        rows.append((seg["segment_id"][-3:], (seg.get("text_gen_final") or "")[:34],
+                     bool(seg.get("merged_from")), verdict))
+    print("  实际          成片 %d 段（其中合并段 %d 个），出口码 %d"
+          % (len(bj.get("segments", [])), sum(1 for r in rows if r[2]), code))
+    print()
+    print("  段   合并  预测能判                        实际判定")
+    for sid, prompt, is_merged, verdict in rows:
+        fields = [f for pat, f, _th, _w, _k in signature.RULES if _re.search(pat, prompt.lower())]
+        print("  %-4s %-4s  %-30s %s" % (sid, "是" if is_merged else "-",
+              "/".join(fields) if fields else "无法判（无校准量）", verdict))
+    print()
+    print("  对照          预测合并 %d 处，实际合并段 %d 个"
+          % (len(pairs), sum(1 for r in rows if r[2])))
+    return code
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sentence", nargs="?", default=None)
@@ -154,7 +223,15 @@ def main():
     ap.add_argument("--batch", default=None, help="批量文件：每行一句")
     ap.add_argument("--explain", action="store_true",
                     help="只做规划，说明这句话能做到什么程度")
+    ap.add_argument("--compare", action="store_true",
+                    help="跑完整流程，并把预测与实际结果并排输出")
     a = ap.parse_args()
+
+    if a.compare:
+        if not a.sentence:
+            ap.print_help()
+            sys.exit(2)
+        sys.exit(compare(a.sentence, k=a.k, job_id=a.job_id))
 
     if a.explain:
         if not a.sentence:

@@ -214,6 +214,25 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
 
     # 合并段若没有候选能同时做出两个动作，退回未合并的两段重新生成：
     # 合并是为了去掉交界，但不能以悄悄丢掉一个动作为代价。
+    # 合并段若一个候选都没过，也算失败：退回未合并重来，别整段丢掉
+    import json as _json2
+    for _seg in sb["segments"]:
+        if not _seg.get("merged_from") or _seg.get("merged_unverified"):
+            continue
+        _any = False
+        for _c in _seg.get("candidates", []):
+            _n = int(_c["candidate_id"].split("_")[-1])
+            _mp = job.cand_dir(_seg["segment_id"], _n) / "metrics.json"
+            try:
+                if _json2.loads(_mp.read_text(encoding="utf-8")).get("decision") == "pass":
+                    _any = True
+                    break
+            except Exception:
+                continue
+        if not _any:
+            _seg["merged_unverified"] = True
+            job.log("合并段 %s 无候选通过，退回未合并" % _seg["segment_id"])
+
     _bad = [s for s in sb["segments"] if s.get("merged_unverified")]
     if _bad and sb.get("pre_merge"):
         job.log("退回未合并：%d 个合并段没有任何候选同时做出两个动作" % len(_bad))
