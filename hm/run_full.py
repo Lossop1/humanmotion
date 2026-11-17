@@ -126,6 +126,7 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
     run_job.step_a04(job, sb)
     run_job.step_a05(job, sb)
     run_job.step_a06(job, sb)
+    run_job.merge_short_segments(job, sb)
     job.save_json("storyboard.json", sb)
 
     for rnd in range(max_rounds + 1):

@@ -475,6 +475,51 @@ def _goal_bonus(job, seg, cand):
     return score
 
 
+def merge_short_segments(job, sb, limit_frames=44):
+    """把两个相邻短段合成一段，用复合提示词生成（HM_MERGE_SHORT=1 时启用）。
+
+    为什么要合并
+        交界压不下去是因为两侧姿态差得远；合并后就没有交界。
+        实测「停下→举手」「跳→转身」两个复合提示词各 6/6 几何通过、两动作都做出来。
+    代价
+        合并段无法再逐动作做签名检查，只能整体看几何；出问题更难定位。
+    """
+    import os as _os
+    if _os.environ.get("HM_MERGE_SHORT", "1") == "0":
+        return sb
+    out = []
+    i = 0
+    segs = sb["segments"]
+    while i < len(segs):
+        a = segs[i]
+        if i + 1 < len(segs):
+            b = segs[i + 1]
+            fa = int(a.get("duration_frames") or 40)
+            fb = int(b.get("duration_frames") or 40)
+            if fa <= limit_frames and fb <= limit_frames:
+                pa = (a.get("text_gen_final") or "").strip()
+                pb = (b.get("text_gen_final") or "").strip()
+                body_b = pb[len("a person "):] if pb.startswith("a person ") else pb
+                merged = dict(a)
+                merged["text_gen"] = "%s and %s" % (pa, body_b)
+                merged["text_gen_final"] = merged["text_gen"]
+                merged["duration_frames"] = fa + fb
+                merged["source_text"] = (a.get("source_text") or "") + (b.get("source_text") or "")
+                merged["merged_from"] = [a["segment_id"], b["segment_id"]]
+                merged["selected"] = None
+                merged["segment_decision"] = None
+                merged["candidates"] = []
+                out.append(merged)
+                job.log("合并短段：%s + %s → %d 帧，提示词 %r"
+                        % (a["segment_id"], b["segment_id"], fa + fb, merged["text_gen"]))
+                i += 2
+                continue
+        out.append(a)
+        i += 1
+    sb["segments"] = out
+    return sb
+
+
 def repair_junctions(job, sb, ref, pose_th, k_extra=6, gap_limit=90.0):
     """交界修复：差得大的相邻段，重新生成后一段，挑一个与前一端更贴合的候选。
 
