@@ -100,15 +100,9 @@ def reselect_with_pose(job, sb):
     run_job.step_a12_a13(job, sb)
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("sentence")
-    ap.add_argument("--k", type=int, default=6)
-    ap.add_argument("--job-id", default=None)
-    ap.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
-    a = ap.parse_args()
-
-    cfg = {"model": config.DEFAULT_MODEL, "k": a.k, "fps": 20,
+def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
+    """跑完整条流水线。返回 (视频路径, bounds 字典)；无段通过时返回 (None, None)。"""
+    cfg = {"model": config.DEFAULT_MODEL, "k": k, "fps": 20,
            "coordinate_system": "HumanML3D",
            "seed_control": "unsupported (backend does not accept seed)",
            "capability_table": run_job.CAPABILITY_VERSION,
@@ -121,11 +115,11 @@ def main():
     cfg["bone_reference"] = ref["version"]
     pose_th = pose_rules.load_thresholds()
 
-    job = jobmod.Job(a.sentence, job_id=a.job_id)
+    job = jobmod.Job(sentence, job_id=job_id)
     print("  任务目录：%s" % job.dir)
 
     run_job.step_a01(job, cfg)
-    sb, warns = run_job.step_a02(job, a.sentence)
+    sb, warns = run_job.step_a02(job, sentence)
     for w in warns:
         job.log("提醒：" + w)
     sb, _ = run_job.step_a03(job, sb)
@@ -134,7 +128,7 @@ def main():
     run_job.step_a06(job, sb)
     job.save_json("storyboard.json", sb)
 
-    for rnd in range(a.max_rounds + 1):
+    for rnd in range(max_rounds + 1):
         todo = [s for s in sb["segments"]
                 if s.get("segment_decision") != "pass" and s.get("support_status") != "unsupported"]
         if not todo:
@@ -147,7 +141,7 @@ def main():
                 p = job.cand_dir(s["segment_id"], n) / "motion263.npy"
                 hashes[s["segment_id"]] = file_hash(p)
 
-        kk = a.k if rnd == 0 else a.k * 2
+        kk = k if rnd == 0 else k * 2
         for s in todo:
             s["candidates"] = []
         run_job.step_a07(job, {"segments": todo}, kk)
@@ -184,7 +178,7 @@ def main():
             ftype, ev = repair.classify(ms, reasons, None)
             s["failure_type"] = ftype
             s["failure_evidence"] = ev
-            plan = repair.plan_repair(ftype, rnd, a.max_rounds)
+            plan = repair.plan_repair(ftype, rnd, max_rounds)
             job.append_event({"event": "repair_plan", "segment_id": s["segment_id"],
                               "failure_type": ftype, "evidence": ev,
                               "plan": plan})
@@ -200,13 +194,26 @@ def main():
     if passed == 0:
         print("\n  没有通过检查的片段，停在 A15。")
         print("  任务目录：%s" % job.dir)
-        return
+        return None, None
 
     from hm import assemble_params as AP
     mp4, bj = AP.run(job, sb)
     print("\n  A01–A18 全部走完")
     print("  合体视频：%s" % mp4)
     print("  任务目录：%s" % job.dir)
+    return mp4, bj
+
+
+def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("sentence")
+    ap.add_argument("--k", type=int, default=6)
+    ap.add_argument("--job-id", default=None)
+    ap.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
+    a = ap.parse_args()
+    mp4, bj = run(sentence, k=k, job_id=job_id, max_rounds=max_rounds)
+    raise SystemExit(0 if mp4 else 2)
 
 
 if __name__ == "__main__":
