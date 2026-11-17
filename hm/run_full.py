@@ -149,7 +149,7 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
         _before = _seg.get("text_gen_final") or ""
         _new, _why = _pn.normalize(_before)
         if _why and _new != _before:
-            job.log("A06 %s 补出肢体：%r → %r" % (_seg["segment_id"], _before, _new))
+            job.log("A06 %s 规范化（%s）：%r → %r" % (_seg["segment_id"], _why, _before, _new))
             _seg["text_gen_final"] = _new
             _seg["prompt_normalized"] = _why
 

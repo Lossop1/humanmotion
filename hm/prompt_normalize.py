@@ -19,6 +19,11 @@ SUBJECT_PATTERNS = [
      lambda m: "throws a right punch"),
 ]
 
+# 「减速并停下」这类：带 in place 时实测几乎停不住（64/72 帧 0/6、80 帧 2/6），
+# 去掉 in place 后 64 帧就 6/6 —— 语义不变，属于纯句式问题
+STOP_IN_PLACE = re.compile(r"\b(slows? down and stops?|stops? walking and stands? still)\s+in place\b",
+                           re.I)
+
 LIMB = re.compile(r"\b(hand|handed|arm|fist|left|right|leg|knee|foot)\b", re.I)
 
 
@@ -27,6 +32,10 @@ def normalize(prompt):
     text = str(prompt)
     if LIMB.search(text):
         return text, None
+    m_stop = STOP_IN_PLACE.search(text)
+    if m_stop:
+        return STOP_IN_PLACE.sub(lambda m: m.group(1), text), "停住句去掉 in place"
+
     for pattern, why, fn in SUBJECT_PATTERNS:
         if re.search(pattern, text, flags=re.I):
             new = re.sub(pattern, fn, text, count=1, flags=re.I)
