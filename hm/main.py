@@ -33,7 +33,21 @@ def run_one(sentence, job_id=None, k=6):
     mp4, bj = run_full.run(sentence, k=k, job_id=job_id)
     dt = time.time() - t0
     if not mp4:
-        print("  没有出片：所有段都没通过检查")
+        sb_p = Path(job_dir) / "storyboard.json"
+        reasons = []
+        if sb_p.exists():
+            try:
+                import json as _json
+                sb = _json.loads(sb_p.read_text(encoding="utf-8"))
+                reasons = [s.get("support_reason", "") for s in sb.get("segments", [])]
+            except Exception:
+                reasons = []
+        if reasons and all(r and ("不支持" in r or "0/4" in r or "复合" in r) for r in reasons):
+            print("  这句话做不了：所有动作都属于已知做不出来的类别")
+            for r in reasons:
+                print("    %s" % r)
+        else:
+            print("  没有出片：所有段都没通过检查")
         return 2, dict(ok=False, dropped=[], mp4=None)
     job_dir = Path(mp4).parent.parent
     dropped = []

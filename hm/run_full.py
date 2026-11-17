@@ -212,7 +212,7 @@ def main():
     ap.add_argument("--job-id", default=None)
     ap.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
     a = ap.parse_args()
-    mp4, bj = run(sentence, k=k, job_id=job_id, max_rounds=max_rounds)
+    mp4, bj = run(a.sentence, k=a.k, job_id=a.job_id, max_rounds=a.max_rounds)
     raise SystemExit(0 if mp4 else 2)
 
 

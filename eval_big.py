@@ -62,8 +62,11 @@ def run_round(rnd):
         if jd.exists():
             shutil.rmtree(jd)
         t0 = time.time()
-        subprocess.run([sys.executable, "-m", "hm.run_full", sent, "--job-id", job],
-                       cwd=str(ROOT), capture_output=True, text=True)
+        pr = subprocess.run([sys.executable, "-m", "hm.run_full", sent, "--job-id", job],
+                            cwd=str(ROOT), capture_output=True, text=True)
+        # 子进程输出留档，失败时才有东西可查（上一轮 16 句失败却无日志）
+        (ROOT / "outputs" / ("%s.log" % job)).write_text(
+            (pr.stdout or "") + "\n--- stderr ---\n" + (pr.stderr or ""), encoding="utf-8")
         dt = round(time.time() - t0, 1)
         bj_p = jd / "assembled" / "bounds.json"
         rec = {"id": sid, "round": rnd, "sentence": sent, "elapsed": dt,
