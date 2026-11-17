@@ -143,6 +143,16 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
     run_job.step_a04(job, sb)
     run_job.step_a05(job, sb)
     run_job.step_a06(job, sb)
+    # 限定版规范化：只补「出拳用哪只手」，其余一律不动
+    from hm import prompt_normalize as _pn
+    for _seg in sb["segments"]:
+        _before = _seg.get("text_gen_final") or ""
+        _new, _why = _pn.normalize(_before)
+        if _why and _new != _before:
+            job.log("A06 %s 补出肢体：%r → %r" % (_seg["segment_id"], _before, _new))
+            _seg["text_gen_final"] = _new
+            _seg["prompt_normalized"] = _why
+
     run_job.ensure_stop_frames(job, sb)
     run_job.merge_short_segments(job, sb)
     job.save_json("storyboard.json", sb)

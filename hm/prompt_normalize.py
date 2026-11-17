@@ -1,0 +1,38 @@
+"""限定版措辞规范化：只做两条实测支持、且不改变语义的改写。
+
+为什么只做两条
+    以前放开改写（提示词库替换、库变体）三次都改错了语义（crawl→push、stands up→stands still、
+    stand up→pick）。所以这里只保留「补出肢体」这一类：出拳用手、踢腿用脚，是动作本身的含义，
+    不是换动作。
+
+依据
+    出拳：负对照最大 0.22；«punches with the right hand» 最小 0.53（6/6）、
+          «throws a right punch» 最小 0.52（6/6）；而 «punches forward» 有不点手的样本只到 0.17。
+"""
+import re
+
+# (正则, 说明, 改写函数)
+SUBJECT_PATTERNS = [
+    (r"\bpunches forward\b", "出拳补出用哪只手",
+     lambda m: "punches forward with the right hand"),
+    (r"\bthrows a punch\b", "出拳补出用哪只手",
+     lambda m: "throws a right punch"),
+]
+
+LIMB = re.compile(r"\b(hand|handed|arm|fist|left|right|leg|knee|foot)\b", re.I)
+
+
+def normalize(prompt):
+    """返回 (新提示词, 改动说明或 None)。只在原句没有点名肢体时才补。"""
+    text = str(prompt)
+    if LIMB.search(text):
+        return text, None
+    for pattern, why, fn in SUBJECT_PATTERNS:
+        if re.search(pattern, text, flags=re.I):
+            new = re.sub(pattern, fn, text, count=1, flags=re.I)
+            # 只允许「原动词仍在、且新增的是肢体词」的改动
+            verb_ok = re.search(r"punch", new, flags=re.I) is not None
+            if verb_ok and LIMB.search(new):
+                return new, why
+            return text, None
+    return text, None
