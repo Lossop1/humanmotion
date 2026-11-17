@@ -24,6 +24,17 @@ def report(job_id):
     bounds = bj["segments"]
     junctions = bj.get("junctions", [])
 
+    # 验证状态：✓ 通过校准量 / ? 无法判 / ✗ 可疑；没有 semantics.json 就不标
+    mark_of = {}
+    sem_p = job / "semantics.json"
+    if sem_p.exists():
+        try:
+            for row in json.loads(sem_p.read_text(encoding="utf-8")):
+                mark_of[row["segment"][-3:]] = {"通过": "OK", "无法判": "?", 
+                                                "可疑": "X", "未选中": "-"}.get(row["status"], "")
+        except Exception:
+            mark_of = {}
+
     lines = []
     t = 0.0
     marks = []
@@ -62,11 +73,18 @@ def report(job_id):
         H = 320
         sheet = Image.new("RGB", (H * cols, (H + 26) * rows), (255, 255, 255))
         d = ImageDraw.Draw(sheet)
+        # 这台机器上两个字体互补：Droid 有中文没 ASCII，DejaVu 有 ASCII 没中文，分开画
         fnt = ImageFont.truetype('/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf', 20)
+        fnt_ascii = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 20)
         for i, (n, label, img) in enumerate(frames):
             x, y = (i % cols) * H, (i // cols) * (H + 26)
             sheet.paste(Image.fromarray(img).resize((H, H)), (x, y + 26))
-            d.text((x + 6, y + 6), "%d  %s" % (n, label), fill=(10, 10, 10), font=fnt)
+            sid = segs[n - 1]["segment_id"][-3:] if n - 1 < len(segs) else ""
+            mark = mark_of.get(sid, "")
+            head = "[%s] %d " % (mark or "-", n)
+            d.text((x + 6, y + 6), head, fill=(10, 10, 10), font=fnt_ascii)
+            w = d.textlength(head, font=fnt_ascii)
+            d.text((x + 6 + w, y + 6), label, fill=(10, 10, 10), font=fnt)
         out = job / "分镜.png"
         sheet.save(out)
         print("  拼接图：%s（%d 段，视频 %d 帧）" % (out, len(frames), total))
