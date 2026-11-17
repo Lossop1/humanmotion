@@ -37,9 +37,10 @@ RULES = [
     # 踢腿：校准于正对照「kicks forward」最小 0.552、负对照（走/站/原地踏步）最大 0.492
     (r"kicks? forward|kicking forward|does a (front|side) kick", "kick_reach", 0.52,
      "脚应向前踢出", "min"),
-    # 出拳：校准后仍不可完全分离（正对照最小 -0.018、负对照最大 0.164），
-    # 取 0.25 只作提示：宁可漏报，不做硬门禁
-    (r"punches?|punching|throws? a punch", "punch_reach", 0.25, "手应向前伸出", "min"),
+    # 出拳：措辞点名到哪只手时可分离（负对照最大 0.22，正对照最小 0.52）；
+    # 不点手的写法仍有 1/6 打空，所以阈值取 0.35，介于两者之间
+    (r"punches?|punching|throws? a (right |left )?punch", "punch_reach", 0.35,
+     "手应向前伸出", "min"),
 ]
 
 
