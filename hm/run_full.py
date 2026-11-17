@@ -142,6 +142,13 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
                 hashes[s["segment_id"]] = file_hash(p)
 
         kk = k if rnd == 0 else k * 2
+        # 重试时同时加长片段：实测同一提示词 40 帧 1/4 通过、44 帧 4/4，
+        # 帧数太短会把动作压成「骨盆朝向与脚尖反向」这种错误姿态。
+        if rnd > 0:
+            for s in todo:
+                old_n = int(s.get("duration_frames") or 40)
+                s["duration_frames"] = min(old_n + 8, 80)
+                job.log("重试：%s 帧数 %d → %d" % (s["segment_id"], old_n, s["duration_frames"]))
         for s in todo:
             s["candidates"] = []
         run_job.step_a07(job, {"segments": todo}, kk)
