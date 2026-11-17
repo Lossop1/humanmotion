@@ -23,8 +23,9 @@ RULES = [
     #                     mdm   前倾中位 10.2、后退中位 0.39
     (r"turns? around|turning around", "lean_median", 9.0, "转身应站直", "max"),
     (r"turns? around|turning around", "backward_m", 0.1, "转身不该边退边走", "max"),
-    (r"(raises?|raising|lifts?|lifting|waves?|waving)\s+(both\s+)?"
-     r"(hands?|arms?|the (right|left) (hand|arm))", "wrist_above", 0.05, "手应举过肩", "min"),
+    # 举手：校准后不可分（正对照最小 0.065 vs 负对照最大 0.139，弯腰时手腕也会相对抬升），
+    # 因此不设规则，量保留在签名里供排序参考。
+
     # 坐下：只认「坐下去」这类，不认「从坐着站起来」——后者结束时不该更低
     (r"sits? down|sitting down|sits? on|takes? a seat|is seated", "pelvis_end_drop", 0.18,
      "结束时重心应降低", "min"),
