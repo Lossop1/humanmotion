@@ -82,3 +82,34 @@ def bank_alternatives(prompt, limit=2, min_rate=0.5):
             out.append((rate, cand))
     out.sort(reverse=True)
     return [c for _, c in out[:limit]]
+
+
+def bank_rate(prompt):
+    """查提示词库：返回 (动作键, 最优通过率, 最优写法) 或 None。方向必须一致。"""
+    import json
+    from pathlib import Path
+    p = Path(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
+    if not p.exists():
+        return None
+    bank = json.loads(p.read_text(encoding="utf-8"))
+
+    def _dirs_of(x):
+        y = re.sub(r"(right|left)\s+(hand|leg|arm|fist|foot)", " ", str(x).lower())
+        return {w for w in re.findall(r"[a-z]+", y) if w in DIRS}
+
+    def toks(x):
+        stop = {"a", "the", "person", "with", "and", "in", "on", "to", "of", "up", "down",
+                "forward", "backward", "left", "right", "back", "place", "around", "once"}
+        return {w for w in re.findall(r"[a-z]+", str(x).lower()) if w not in stop and len(w) > 2}
+
+    cur, dirs = toks(prompt), _dirs_of(prompt)
+    for key, entry in bank.items():
+        for row in entry.get("phrasings", []):
+            cand = row["text"]
+            if _dirs_of(cand) != dirs:
+                continue
+            if not (toks(cand) & cur):
+                continue
+            rate = max((m.get("rate", 0) for m in row.get("models", {}).values()), default=0)
+            return key, rate, entry.get("best") or cand
+    return None

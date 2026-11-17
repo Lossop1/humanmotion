@@ -29,27 +29,22 @@ _CAP = {}
 
 
 def _cap_lookup(prompt):
-    """按提示词查能力表。返回 (status, model, 中文名) 或 None。"""
-    import json
-    from pathlib import Path
-    if not _CAP:
-        p = Path(__file__).resolve().parent.parent / "outputs" / "_reference" / "capability_v4.json"
-        _CAP["doc"] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
-    doc = _CAP["doc"]
-    if not doc:
+    """按提示词查能力表。复用 backends 的匹配与 prompt_scope 规则，避免两套实现。"""
+    from hm import backends
+    table = backends.load_table()
+    _key, entry = backends.match_entry(table, prompt)
+    if not entry:
         return None
-    text = str(prompt).lower()
-    for key, v in doc["table"].items():
-        words = [w for w in v["prompt"].lower().split()[:3] if len(w) > 2]
-        if key.replace("_", " ") in text or v["action_zh"] in str(prompt) or any(w in text for w in words):
-            models = v.get("models", {})
-            if not models:
-                return None
-            best = v.get("best") or max(models, key=lambda m: models[m].get("pass_rate", 0))
-            st = models[best].get("status", "unverified")
-            st = {"support": "supported", "supported": "supported"}.get(st, st)
-            return st, best, v.get("action_zh")
-    return None
+    score = backends.BACKENDS
+    models = {m: d for m, d in (entry.get("models") or {}).items() if m in score}
+    if not models:
+        return None
+    if entry.get("prompt_scope") == "composite":
+        return None
+    best = entry.get("best") or max(models, key=lambda m: models[m].get("pass_rate", 0))
+    st = models[best].get("status", "unverified")
+    st = {"support": "supported"}.get(st, st)
+    return st, best, entry.get("action_zh")
 
 
 _FILLERS = ("一个人", "然后", "接着", "最后", "再", "先", "一边", "并且", "着", "了", "的")
@@ -128,6 +123,10 @@ def step_a03(job, sb):
         if hit is not None:
             status, model, zh = hit
             reason = "能力表：%s 最佳后端 %s" % (zh or "-", model)
+        elif (_bank := __import__("hm.prompt_variants", fromlist=["bank_rate"]).bank_rate(prompt)) \
+                and _bank[1] == 0:
+            status = "unsupported"
+            reason = "提示词库实测 0/4（%s），生成不出来" % _bank[0]
         elif any(w in low for w in UNSUPPORTED_WORDS):
             status, reason = "unsupported", "命中禁用词表（实测生成质量不可靠）"
         else:
@@ -202,7 +201,15 @@ def step_a06(job, sb):
             # 直接复用会把一段变成两个动作，所以带连接词的一律不复用
             compound = ((" and " in (" %s " % tested.lower()))
                         if tested else False) or entry.get("prompt_scope") == "composite"
-            if (tested and not compound and status == "supported"
+            # 只在「测过的措辞是 planner 措辞的子集」时复用，
+            # 否则会把「stands up」换成「stands still」这种语义不同的写法
+            def _tok(x):
+                _stop = {"a", "the", "person", "with", "and", "in", "on", "to", "of", "up", "down",
+                         "forward", "backward", "left", "right", "place", "from", "at", "both"}
+                return {w for w in re.findall(r"[a-z]+", str(x).lower())
+                        if w not in _stop and len(w) > 2}
+            _subset = bool(tested) and _tok(tested) <= _tok(prompt)
+            if (tested and not compound and _subset and status == "supported"
                     and tested.lower() != prompt.lower()):
                 final, version = tested, "capability_tested_prompt"
                 reused += 1
@@ -219,7 +226,8 @@ def step_a06(job, sb):
     except Exception:
         bank = {}
     from_bank = 0
-    if bank:
+    import os as _os_bank
+    if bank and _os_bank.environ.get("HM_BANK_SUBSTITUTE", "0") == "1":
         _stop = {"a", "the", "person", "with", "and", "in", "on", "to", "of", "up",
                  "down", "forward", "backward", "left", "right", "once", "his", "her"}
         _DIRS = {"forward", "backward", "left", "right", "up", "down", "back"}
@@ -307,7 +315,11 @@ def step_a07(job, sb, k):
         dt = round(time.time() - t0, 1)
         # 同一动作再取库里另外两种写法，一起交给判据挑（措辞差异实测影响很大）
         from hm import prompt_variants as _pv
-        _vars = _pv.bank_alternatives(prompt)
+        # 库里其它写法默认不追加：实测三次自动替换都把语义改错了
+        # （crawl→push、stands up→stands still、stand up→pick），
+        # 措辞机制先只保留「实测表 + 死路识别」，需要时用 HM_BANK_VARIANTS=1 打开。
+        import os as _os_var
+        _vars = _pv.bank_alternatives(prompt) if _os_var.environ.get("HM_BANK_VARIANTS", "0") == "1" else []
         for _pv_text in _vars:
             try:
                 _more = generate.generate([_pv_text] * max(2, k // 2),
