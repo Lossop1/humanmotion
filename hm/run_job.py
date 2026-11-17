@@ -475,7 +475,7 @@ def _goal_bonus(job, seg, cand):
     return score
 
 
-def merge_short_segments(job, sb, limit_frames=44):
+def merge_short_segments(job, sb, limit_frames=56):
     """把两个相邻短段合成一段，用复合提示词生成（HM_MERGE_SHORT=1 时启用）。
 
     为什么要合并
