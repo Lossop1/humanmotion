@@ -34,6 +34,45 @@ CASES = [
 PLAN_CASE = "一个人向前走，停下，举手，跳一下，转身，最后走开"
 
 
+def check_merged_actions(job_id="guard_multi"):
+    """合并段必须两个动作都做出来——这是语义承诺，要有回归保护。"""
+    import json as _json
+
+    import numpy as np
+    from hm import signature
+
+    d = ROOT / "outputs" / job_id
+    sb_p = d / "storyboard.json"
+    if not sb_p.exists():
+        return False, "没有 %s 的结果可查" % job_id
+    sb = _json.loads(sb_p.read_text(encoding="utf-8"))
+    checked = missing = 0
+    detail = []
+    for seg in sb.get("segments", []):
+        if not seg.get("merged_from") or not seg.get("selected"):
+            continue
+        n = int(str(seg["selected"]).split("_")[-1])
+        jp = d / "segments" / seg["segment_id"] / ("candidate_%d" % n) / "joints22.npy"
+        if not jp.exists():
+            continue
+        checked += 1
+        sig = signature.signature(np.load(jp))
+        fails = []
+        for part in (seg.get("text_gen_final") or "").split(" and "):
+            part = part.strip()
+            body = part if part.lower().startswith("a person") else "a person " + part
+            ok, _bad, _det = signature.check(body, sig)
+            if ok is False:
+                fails.append(part[:24])
+        if fails:
+            missing += 1
+            detail.append("%s 缺 %s" % (seg["segment_id"], "/".join(fails)))
+    if checked == 0:
+        return False, "没有合并段可查（合并逻辑可能没生效）"
+    return missing == 0, "合并段 %d 个，动作缺失 %d 个%s" % (
+        checked, missing, "" if not detail else "（%s）" % "；".join(detail[:2]))
+
+
 def check_plan_consistency(job_id="guard_plan"):
     """预测的合并数与实际合并段数对不上时，运行日志里必须有解释。"""
     pr = subprocess.run([sys.executable, "-m", "hm.main", PLAN_CASE,
@@ -112,6 +151,11 @@ def main():
                                     len(text.splitlines())))
 
     if not a.fast:
+        ok, msg = check_merged_actions()
+        if not ok:
+            failures.append("merged：%s" % msg)
+        print("  %-9s %s  %s" % ("merged", "通过" if ok else "失败", msg))
+
         ok, msg = check_plan_consistency()
         if not ok:
             failures.append("plan：%s" % msg)
