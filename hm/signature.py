@@ -31,6 +31,9 @@ RULES = [
      "结束时重心应降低", "min"),
     (r"bends? forward|bending forward|bends? over|bowing", "lean_delta", 20.0, "躯干应前倾", "min"),
     (r"crouch|squat|kneel", "pelvis_drop", 0.18, "应降低重心", "min"),
+    # 停住：看末段速度（校准：站着 0.02、原地踏步 0.17、慢跑 0.46、走 1.17 米/秒）
+    (r"stands? still|stops? (walking|moving)|com(e|es) to a stop|slow(s)? down and stops?",
+     "speed_tail", 0.10, "末段应停住", "max"),
     # 踢腿：校准于正对照「kicks forward」最小 0.552、负对照（走/站/原地踏步）最大 0.492
     (r"kicks? forward|kicking forward|does a (front|side) kick", "kick_reach", 0.52,
      "脚应向前踢出", "min"),
@@ -88,6 +91,12 @@ def signature(J):
     return {
         "disp_m": float(horizon.max()),
         "speed_mps": speed,
+        # 峰值速度：区分「站着/停住」与「原地踏步/慢跑」用得上（中位位移会重叠）
+        "speed_max": float(np.max(np.linalg.norm(np.diff(root, axis=0), axis=1)) * 20)
+        if T > 1 else 0.0,
+        # 末段速度：判断「停住了」要看结尾，不能看整段峰值（先走再停的峰值很高）
+        "speed_tail": float(np.mean(np.linalg.norm(np.diff(root[-9:], axis=0), axis=1)) * 20)
+        if T > 9 else 0.0,
         "wrist_above": wrist_above,
         "pelvis_drop": pelvis_drop,
         "pelvis_up": pelvis_up,
