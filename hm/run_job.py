@@ -506,6 +506,12 @@ def merge_short_segments(job, sb, limit_frames=56):
                 merged["duration_frames"] = fa + fb
                 merged["source_text"] = (a.get("source_text") or "") + (b.get("source_text") or "")
                 merged["merged_from"] = [a["segment_id"], b["segment_id"]]
+                # 合并后要重新判定可支持性：单动作「蹲下」做不出来，
+                # 但「蹲下再站起」整体是能力表 10/10 的条目，不能沿用旧结论
+                merged["support_status"] = "unverified"
+                merged["support_reason"] = "合并段，需重新判定"
+                if not merged.get("route"):
+                    merged["route"] = a.get("route") or {}
                 merged["selected"] = None
                 merged["segment_decision"] = None
                 merged["candidates"] = []

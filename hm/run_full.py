@@ -210,14 +210,14 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
     if passed == 0:
         print("\n  没有通过检查的片段，停在 A15。")
         print("  任务目录：%s" % job.dir)
-        return None, None
+        return None, None, str(job.dir)
 
     from hm import assemble_params as AP
     mp4, bj = AP.run(job, sb)
     print("\n  A01–A18 全部走完")
     print("  合体视频：%s" % mp4)
     print("  任务目录：%s" % job.dir)
-    return mp4, bj
+    return mp4, bj, str(job.dir)
 
 
 def main():

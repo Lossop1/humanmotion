@@ -30,16 +30,19 @@ CHECK_SENTENCES = [
 
 def run_one(sentence, job_id=None, k=6):
     t0 = time.time()
-    mp4, bj = run_full.run(sentence, k=k, job_id=job_id)
+    mp4, bj, job_dir_str = run_full.run(sentence, k=k, job_id=job_id)
     dt = time.time() - t0
+    job_dir = Path(job_dir_str)
+
     if not mp4:
-        sb_p = Path(job_dir) / "storyboard.json"
+        # 先分清是「这句话做不了」还是「都没通过检查」，两者对使用者意义不同
         reasons = []
+        sb_p = job_dir / "storyboard.json"
         if sb_p.exists():
             try:
                 import json as _json
                 sb = _json.loads(sb_p.read_text(encoding="utf-8"))
-                reasons = [s.get("support_reason", "") for s in sb.get("segments", [])]
+                reasons = [seg.get("support_reason") or "" for seg in sb.get("segments", [])]
             except Exception:
                 reasons = []
         if reasons and all(r and ("不支持" in r or "0/4" in r or "复合" in r) for r in reasons):
@@ -48,8 +51,8 @@ def run_one(sentence, job_id=None, k=6):
                 print("    %s" % r)
         else:
             print("  没有出片：所有段都没通过检查")
-        return 2, dict(ok=False, dropped=[], mp4=None)
-    job_dir = Path(mp4).parent.parent
+        return 2, dict(ok=False, dropped=[], mp4=None, dir=str(job_dir))
+
     dropped = []
     log = job_dir / "run.log"
     if log.exists():
@@ -72,8 +75,9 @@ def run_one(sentence, job_id=None, k=6):
     for name, p in arts:
         if p.exists():
             print("  产物 %-4s %s" % (name, p))
-    return (0 if (mp4 and ok and not dropped) else 1), dict(ok=ok, dropped=dropped,
+    return (0 if (mp4 and ok and not dropped) else 1), dict(ok=bool(ok), dropped=dropped,
                                                             mp4=str(mp4), dir=str(job_dir))
+
 
 
 def main():
