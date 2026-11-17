@@ -475,6 +475,26 @@ def _goal_bonus(job, seg, cand):
     return score
 
 
+STOP_MIN_FRAMES = 64
+
+
+def ensure_stop_frames(job, sb):
+    """含「停住/站定」的段要给足帧数。
+
+    实测同一提示词 «stops walking and stands still»：44 帧末段速度 1.53、56 帧 1.68（都没停），
+    72 帧才 0.06（6/6 通过）。帧数不够时模型会一直走，而不是先走再停。
+    """
+    import re as _re
+    for seg in sb["segments"]:
+        prompt = seg.get("text_gen_final") or ""
+        if _re.search(r"stops?|stands? still|com(e|es) to a stop|halts?", prompt.lower()):
+            old_n = int(seg.get("duration_frames") or 40)
+            if old_n < STOP_MIN_FRAMES:
+                seg["duration_frames"] = STOP_MIN_FRAMES
+                job.log("%s 含「停住」，帧数 %d → %d" % (seg["segment_id"], old_n, STOP_MIN_FRAMES))
+    return sb
+
+
 def merge_short_segments(job, sb, limit_frames=56):
     """把两个相邻短段合成一段，用复合提示词生成（HM_MERGE_SHORT=1 时启用）。
 
@@ -497,7 +517,9 @@ def merge_short_segments(job, sb, limit_frames=56):
             b = segs[i + 1]
             fa = int(a.get("duration_frames") or 40)
             fb = int(b.get("duration_frames") or 40)
-            if fa <= limit_frames and fb <= limit_frames:
+            # 合并条件按「总长」判：单段 56 帧的上限会把补过帧的「停住」段排除在外，
+            # 而停住段恰恰需要更长的片段才做得出来。
+            if fa <= limit_frames and fb <= limit_frames or (fa + fb) <= 120:
                 pa = (a.get("text_gen_final") or "").strip()
                 pb = (b.get("text_gen_final") or "").strip()
                 body_b = pb[len("a person "):] if pb.startswith("a person ") else pb
