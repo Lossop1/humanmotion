@@ -25,9 +25,17 @@ RULES = [
     (r"turns? around|turning around", "backward_m", 0.1, "转身不该边退边走", "max"),
     (r"(raises?|raising|lifts?|lifting|waves?|waving)\s+(both\s+)?"
      r"(hands?|arms?|the (right|left) (hand|arm))", "wrist_above", 0.05, "手应举过肩", "min"),
-    (r"sits?|sitting|seated", "pelvis_end_drop", 0.18, "结束时重心应降低", "min"),
+    # 坐下：只认「坐下去」这类，不认「从坐着站起来」——后者结束时不该更低
+    (r"sits? down|sitting down|sits? on|takes? a seat|is seated", "pelvis_end_drop", 0.18,
+     "结束时重心应降低", "min"),
     (r"bends? forward|bending forward|bends? over|bowing", "lean_delta", 20.0, "躯干应前倾", "min"),
     (r"crouch|squat|kneel", "pelvis_drop", 0.18, "应降低重心", "min"),
+    # 踢腿：校准于正对照「kicks forward」最小 0.552、负对照（走/站/原地踏步）最大 0.492
+    (r"kicks? forward|kicking forward|does a (front|side) kick", "kick_reach", 0.52,
+     "脚应向前踢出", "min"),
+    # 出拳：校准后仍不可完全分离（正对照最小 -0.018、负对照最大 0.164），
+    # 取 0.25 只作提示：宁可漏报，不做硬门禁
+    (r"punches?|punching|throws? a punch", "punch_reach", 0.25, "手应向前伸出", "min"),
 ]
 
 
@@ -90,6 +98,12 @@ def signature(J):
         "lean_max": float(lean.max()),
         "backward_m": float(-(J[-1, 0] - J[0, 0]) @ fwd),
         "punch_reach": float((rw @ fwd).max()),
+        # 踢腿：脚踝相对同侧髋，沿身体前方的最远伸展（取两腿较大者）
+        "kick_reach": float(max(((J[:, 10, :] - J[:, 1, :]) @ fwd).max(),
+                                ((J[:, 11, :] - J[:, 2, :]) @ fwd).max())),
+        # 推：要求两手同时向前，所以取两手中较小的那个前伸
+        "hands_forward": float(np.minimum((J[:, 20, :] - J[:, 17, :]) @ fwd,
+                                          (J[:, 21, :] - J[:, 16, :]) @ fwd).max()),
         "wrist_speed": float((np.linalg.norm(np.diff(J[:, WRIST, :], axis=0), axis=1) * 20).max())
         if T > 1 else 0.0,
         "stance_width": float(np.mean(np.linalg.norm(J[:, 7, :] - J[:, 8, :], axis=1))),
