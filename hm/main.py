@@ -174,7 +174,9 @@ def explain(sentence, job_id=None):
         print("  %-5s %3s  %-8s %-38s %s%s"
               % (seg["segment_id"][-3:], seg.get("duration_frames"),
                  "不支持" if status == "unsupported" else "可支持",
-                 "/".join(fields) if fields else "无法判（无校准量）",
+                 "/".join(fields) if fields else
+                 ("无法判（%s）" % signature.why_unjudgeable(prompt)
+                  if signature.why_unjudgeable(prompt) else "无法判（无校准量）"),
                  prompt[:36], note))
     print()
     if dead == len(segs):

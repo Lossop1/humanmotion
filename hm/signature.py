@@ -31,6 +31,8 @@ RULES = [
      "结束时重心应降低", "min"),
     (r"bends? forward|bending forward|bends? over|bowing", "lean_delta", 20.0, "躯干应前倾", "min"),
     (r"crouch|squat|kneel", "pelvis_drop", 0.18, "应降低重心", "min"),
+    # 跳：原来写在 check() 的特例里，--explain 的「能判什么」看不到，挪进规则表
+    (r"jumps?|jumping|hops?", "pelvis_up", 0.08, "应往上跳起", "min"),
     # 停住：看末段速度（校准：站着 0.02、原地踏步 0.17、慢跑 0.46、走 1.17 米/秒）
     (r"stands? still|stops? (walking|moving)|com(e|es) to a stop|slow(s)? down and stops?",
      "speed_tail", 0.10, "末段应停住", "max"),
@@ -42,6 +44,25 @@ RULES = [
     (r"punches?|punching|throws? a (right |left )?punch", "punch_reach", 0.35,
      "手应向前伸出", "min"),
 ]
+
+
+# 已证明「校准量分不开」的动作类别，以及分不开的依据（见 G28/G29）
+INSEPARABLE = [
+    (r"(raises?|lifting|lifts?)\s+(both\s+|one\s+|a\s+|the\s+(right|left)\s+)?(hands?|arms?)",
+     "举手类：弯腰时手腕同样抬升，量分不开"),
+    (r"pushes?|pushes? forward|pulls?", "推拉类：正负对照重叠（-0.29 vs 0.22）"),
+    (r"picks? up|reaching|reaches", "捡取类：无校准量，幅度与弯腰重叠"),
+    (r"performs? a series|a set of movements", "复合描述：不是一个具体动作"),
+]
+
+
+def why_unjudgeable(prompt):
+    """该动作为什么无法判：返回一句原因，空串表示不属于已知不可判类别。"""
+    text = str(prompt).lower()
+    for pattern, why in INSEPARABLE:
+        if re.search(pattern, text):
+            return why
+    return ""
 
 
 def _yaw(J):
@@ -136,11 +157,6 @@ def check(prompt, sig, backend=None):
             bad.append((field, th, why))
         elif kind == "max" and v > th:
             bad.append((field, th, why))
-    if re.search(r"jump|hop", text):
-        up = sig.get("pelvis_up") or 0.0
-        detail["jump"] = up
-        if up < 0.08:
-            bad.append(("jump", 0.08, "应往上跳起"))
     if not detail:
         return None, [], {}
     return (len(bad) == 0), bad, detail
