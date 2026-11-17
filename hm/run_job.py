@@ -690,7 +690,7 @@ def step_a12_a13(job, sb, max_retry=2):
         # 软排序：骨长偏差优先，其次单帧姿态变化，再其次路径长度
         # 合并段：先挑出「两个动作都做出来」的候选；存在就只在这些里选。
         # 实测 24 个合并段中 4 个（17%）后一个动作没做出来，整体几何看不出来。
-        if seg.get("merged_from") and len(ok) > 1:
+        if seg.get("merged_from") and ok:
             _keep = []
             for _c in ok:
                 _n = int(_c["candidate_id"].split("_")[-1])
