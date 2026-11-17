@@ -58,6 +58,18 @@ def annotate(job_id, out_name="final_captioned.mp4", crf=16):
             owner += [i] * junc[i]["transition_frames"]
     labels = [(str(i + 1), (s.get("action") or "")[:8]) for i, s in enumerate(segs)]
 
+    # 验证状态角标：只看视频的人也要知道这一段有没有被校准量查过
+    mark_of = {}
+    sem_p = job / "semantics.json"
+    if sem_p.exists():
+        try:
+            for row in json.loads(sem_p.read_text(encoding="utf-8")):
+                mark_of[row["segment"][-3:]] = {"通过": "[OK]", "无法判": "[?]",
+                                                "可疑": "[X]", "未选中": "[-]"}.get(row["status"], "")
+        except Exception:
+            mark_of = {}
+    seg_ids = [s["segment_id"][-3:] for s in segs]
+
     src = job / "render" / "final_cropped.mp4"
     if not src.exists():
         src = job / "render" / "final.mp4"
@@ -97,6 +109,10 @@ def annotate(job_id, out_name="final_captioned.mp4", crf=16):
                             radius=int((fs + 2 * pad_y) / 2.6), fill=(0, 0, 0, 130))
         draw_mixed(d, (bx0 + pad_x, by0 + pad_y - 1), num, name, fn, fc, (255, 255, 255, 240))
         d.text((w - m - 46, m), "%.1fs" % (n / fps), fill=(255, 255, 255, 120), font=fsmall)
+        _mk = mark_of.get(seg_ids[i] if i < len(seg_ids) else "", "")
+        if _mk:
+            fm = _font(max(12, fs - 4), latin=True)
+            d.text((m, m), _mk, fill=(255, 255, 255, 190), font=fm)  # 验证角标绘制
         img = Image.alpha_composite(img, layer)
         out = np.array(img.convert("RGB"))
         cv2.line(out, (0, h - 2), (int(w * n / max(total, 1)), h - 2), (70, 140, 235), 3)
