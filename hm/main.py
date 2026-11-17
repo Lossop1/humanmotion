@@ -30,6 +30,33 @@ CHECK_SENTENCES = [
 ]
 
 
+def verify_segments(job_dir, sb):
+    """逐段做语义验证：可判且通过 / 可疑 / 无法判。返回 [(段号, 状态, 说明)]。"""
+    import numpy as _np
+
+    from hm import signature
+    out = []
+    for seg in sb.get("segments", []):
+        sel = seg.get("selected")
+        if not sel:
+            out.append((seg["segment_id"][-3:], "未选中", ""))
+            continue
+        n = int(str(sel).split("_")[-1])
+        jp = Path(job_dir) / "segments" / seg["segment_id"] / ("candidate_%d" % n) / "joints22.npy"
+        if not jp.exists():
+            out.append((seg["segment_id"][-3:], "未选中", ""))
+            continue
+        prompt = seg.get("text_gen_final") or ""
+        ok, bad, _det = signature.check(prompt, signature.signature(_np.load(jp)))
+        if ok is None:
+            out.append((seg["segment_id"][-3:], "无法判", "无校准量"))
+        elif ok:
+            out.append((seg["segment_id"][-3:], "通过", ""))
+        else:
+            out.append((seg["segment_id"][-3:], "可疑", "、".join(b[0] for b in bad)))
+    return out
+
+
 def run_one(sentence, job_id=None, k=6):
     t0 = time.time()
     mp4, bj, job_dir_str = run_full.run(sentence, k=k, job_id=job_id)
@@ -74,6 +101,22 @@ def run_one(sentence, job_id=None, k=6):
     print("  去掉的段  %s" % ("、".join(dropped) if dropped else "无"))
     print("  交界      %s" % (["%.0f 度" % j["pose_gap_deg"] for j in bj.get("junctions", [])] or "无"))
     print("  耗时      %.1f 秒" % dt)
+    try:
+        import json as _json2
+        sb2 = _json2.loads((job_dir / "storyboard.json").read_text(encoding="utf-8"))
+        status = verify_segments(job_dir, sb2)
+        passed = sum(1 for _s, st, _m in status if st == "通过")
+        unknown = [s for s, st, _m in status if st == "无法判"]
+        suspect = [s for s, st, m in status if st == "可疑"]
+        print("  语义验证  %d/%d 段通过校准量%s%s"
+              % (passed, len(status),
+                 "；无法判 %s" % "/".join(unknown) if unknown else "",
+                 "；可疑 %s" % "/".join(suspect) if suspect else ""))
+        (job_dir / "semantics.json").write_text(_json2.dumps(
+            [dict(segment=s, status=st, detail=m) for s, st, m in status],
+            ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception as _e:
+        print("  语义验证  跳过（%s）" % str(_e)[:40])
     for name, p in arts:
         if p.exists():
             print("  产物 %-4s %s" % (name, p))
