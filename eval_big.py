@@ -77,6 +77,12 @@ def run_round(rnd):
             rec["segments"] = len(bj["segments"])
             rec["frames"] = bj.get("total_frames")
             rec["junctions"] = [j["pose_gap_deg"] for j in bj.get("junctions", [])]
+            # 记速率比：新口径看的是「过渡速率与两侧是否一致」，不是姿态差
+            rec["ratios"] = []
+            for j in bj.get("junctions", []):
+                g, fr = j["pose_gap_deg"], max(j["transition_frames"], 1)
+                br = j.get("boundary_rate_deg_per_frame") or 0
+                rec["ratios"].append(round((g / fr) / max(br, 1e-6), 2))
         log = jd / "run.log"
         if log.exists():
             for ln in log.read_text(encoding="utf-8", errors="replace").splitlines():

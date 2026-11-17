@@ -169,8 +169,10 @@ def build(job, sb, verbose=True):
         # 过渡速度上限不应用固定值，而应与两侧运动速度对比：
         # 实测 S03 交界 86 度、两侧 15.9 度/帧，固定 9 度/帧地板把过渡压到 8.6（比 0.54），
         # 视觉上就是两侧很快、中间慢下来。改为允许到两侧速率的 1.1 倍。
-        _max_rate = max(TRANSITION_MAX_RATE, rate * 1.1)
-        n = int(min(60, max(n, math.ceil(gap / _max_rate))))
+        # 速率比是判据：过渡速度不应超过两侧的 1.4 倍（否则比两侧快，看着像闪一下）。
+        # 实测轮14 出现 4.07 倍（13 度用 2 帧走完），就是没有这条上限。
+        _cap_rate = 1.4 * max(rate, 1e-6)
+        n = int(min(60, max(n, math.ceil(gap / _cap_rate))))
         w_in = joint_speed(pieces[i - 1], tail=True)
         w_out = joint_speed(pieces[i], tail=False)
         nom = max(gap / max(n, 1), 1e-6)
