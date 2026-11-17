@@ -488,6 +488,7 @@ def merge_short_segments(job, sb, limit_frames=56):
     if _os.environ.get("HM_MERGE_SHORT", "1") == "0":
         return sb
     out = []
+    originals = list(sb.get("pre_merge") or [])
     i = 0
     segs = sb["segments"]
     while i < len(segs):
@@ -506,6 +507,8 @@ def merge_short_segments(job, sb, limit_frames=56):
                 merged["duration_frames"] = fa + fb
                 merged["source_text"] = (a.get("source_text") or "") + (b.get("source_text") or "")
                 merged["merged_from"] = [a["segment_id"], b["segment_id"]]
+                import copy as _copy
+                originals.extend([_copy.deepcopy(a), _copy.deepcopy(b)])
                 # 合并后要重新判定可支持性：单动作「蹲下」做不出来，
                 # 但「蹲下再站起」整体是能力表 10/10 的条目，不能沿用旧结论
                 merged["support_status"] = "unverified"
@@ -523,7 +526,29 @@ def merge_short_segments(job, sb, limit_frames=56):
         out.append(a)
         i += 1
     sb["segments"] = out
+    sb["pre_merge"] = originals
     return sb
+
+
+def _merged_parts_ok(job, seg, n):
+    """合并段的两个动作是否都做出来了。返回 (ok, 失败项)。
+
+    合并本来是为了去掉交界，但实测 24 个合并段里有 4 个（17%）后一个动作没做出来；
+    合并段整体几何能过，判据看不出这个，只能按拆开的两个提示词分别查。
+    """
+    from hm import signature as _sig
+    jp = job.cand_dir(seg["segment_id"], n) / "joints22.npy"
+    if not jp.exists():
+        return None, []
+    sig = _sig.signature(np.load(jp))
+    fails = []
+    for part in (seg.get("text_gen_final") or "").split(" and "):
+        part = part.strip()
+        body = part if part.lower().startswith("a person") else "a person " + part
+        ok, bad, _det = _sig.check(body, sig)
+        if ok is False:
+            fails.append((part[:28], [b[0] for b in bad]))
+    return (len(fails) == 0), fails
 
 
 def repair_junctions(job, sb, ref, pose_th, k_extra=6, gap_limit=90.0):
@@ -663,6 +688,23 @@ def step_a12_a13(job, sb, max_retry=2):
             job.log("A13 %s 全失败，类型：%s" % (seg["segment_id"], ftype))
             continue
         # 软排序：骨长偏差优先，其次单帧姿态变化，再其次路径长度
+        # 合并段：先挑出「两个动作都做出来」的候选；存在就只在这些里选。
+        # 实测 24 个合并段中 4 个（17%）后一个动作没做出来，整体几何看不出来。
+        if seg.get("merged_from") and len(ok) > 1:
+            _keep = []
+            for _c in ok:
+                _n = int(_c["candidate_id"].split("_")[-1])
+                _good, _f = _merged_parts_ok(job, seg, _n)
+                if _good:
+                    _keep.append(_c)
+            if not _keep:
+                seg["merged_unverified"] = True
+            if _keep and len(_keep) < len(ok):
+                seg["allowed"] = [_c["candidate_id"] for _c in _keep]
+                job.log("A12 %s 合并段：%d/%d 个候选两个动作都做出来了"
+                        % (seg["segment_id"], len(_keep), len(ok)))
+                ok = _keep
+
         def key(c):
             m = c["metrics"]
             _ok = _sig_of.get(c["candidate_id"]) if "_sig_of" in dir() else None

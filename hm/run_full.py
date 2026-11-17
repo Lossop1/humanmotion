@@ -195,6 +195,31 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
             if plan is None:
                 s["segment_decision"] = "manual_review"
 
+    # 合并段若没有候选能同时做出两个动作，退回未合并的两段重新生成：
+    # 合并是为了去掉交界，但不能以悄悄丢掉一个动作为代价。
+    _bad = [s for s in sb["segments"] if s.get("merged_unverified")]
+    if _bad and sb.get("pre_merge"):
+        job.log("退回未合并：%d 个合并段没有任何候选同时做出两个动作" % len(_bad))
+        _orig = {s["segment_id"]: s for s in sb["pre_merge"]}
+        _new = []
+        for seg in sb["segments"]:
+            if seg.get("merged_unverified"):
+                for pid in seg["merged_from"]:
+                    p0 = _orig.get(pid)
+                    if p0 is None:
+                        continue
+                    p0["candidates"] = []
+                    p0["selected"] = None
+                    p0["segment_decision"] = None
+                    _new.append(p0)
+            else:
+                _new.append(seg)
+        sb["segments"] = _new
+        run_job.step_a07(job, sb, k)
+        run_job.step_a08_a10(job, sb, ref)
+        reselect_with_pose(job, sb)
+        job.save_json("storyboard.json", sb)
+
     # 交界修复：只对差得大的相邻段补候选，针对性花代价
     try:
         _fixed = run_job.repair_junctions(job, sb, ref, pose_th, k_extra=max(4, k), gap_limit=90.0)

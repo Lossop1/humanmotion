@@ -171,15 +171,18 @@ def validate_assembled(J):
 
 
 def segment_candidates(job, sb):
-    """每段可用的候选列表（只取判据通过的）。"""
+    """每段可用的候选（只取判据通过的；若该段记录了 allowed，则只在其中取）。"""
+    import json as _json
     out = []
     for seg in sb["segments"]:
+        allowed = seg.get("allowed")
         cands = []
         for c in seg.get("candidates", []):
+            if allowed is not None and c["candidate_id"] not in allowed:
+                continue
             n = int(c["candidate_id"].split("_")[-1])
             m = job.dir / "segments" / seg["segment_id"] / ("candidate_%d" % n) / "metrics.json"
             try:
-                import json as _json
                 mm = _json.loads(m.read_text(encoding="utf-8"))
             except Exception:
                 continue
