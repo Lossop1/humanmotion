@@ -166,7 +166,11 @@ def build(job, sb, verbose=True):
         n = int(max(2, min(60, round(gap / rate))))
         n = int(min(n, max(2, FJ.DEFAULT_TRANSITION)) if gap <= FJ.EXTREME_GAP_DEG else n)
         # 过渡本身也有速度上限：姿态差再大，也不能一两帧甩完
-        n = int(min(60, max(n, math.ceil(gap / TRANSITION_MAX_RATE))))
+        # 过渡速度上限不应用固定值，而应与两侧运动速度对比：
+        # 实测 S03 交界 86 度、两侧 15.9 度/帧，固定 9 度/帧地板把过渡压到 8.6（比 0.54），
+        # 视觉上就是两侧很快、中间慢下来。改为允许到两侧速率的 1.1 倍。
+        _max_rate = max(TRANSITION_MAX_RATE, rate * 1.1)
+        n = int(min(60, max(n, math.ceil(gap / _max_rate))))
         w_in = joint_speed(pieces[i - 1], tail=True)
         w_out = joint_speed(pieces[i], tail=False)
         nom = max(gap / max(n, 1), 1e-6)
