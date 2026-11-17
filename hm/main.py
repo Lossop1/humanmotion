@@ -82,6 +82,7 @@ def main():
     ap.add_argument("--k", type=int, default=6, help="每段候选数")
     ap.add_argument("--job-id", default=None)
     ap.add_argument("--check", action="store_true", help="冒烟测试三句")
+    ap.add_argument("--batch", default=None, help="批量文件：每行一句")
     a = ap.parse_args()
 
     if a.check:
@@ -92,6 +93,34 @@ def main():
             worst = max(worst, code)
         print()
         print("  冒烟结果：%s" % ("全部通过" if worst == 0 else "有问题，退出码 %d" % worst))
+        sys.exit(worst)
+
+    if a.batch:
+        f = Path(a.batch)
+        if not f.exists():
+            print("  找不到批量文件：%s" % f)
+            sys.exit(2)
+        lines = [ln.strip() for ln in f.read_text(encoding="utf-8").splitlines()
+                 if ln.strip() and not ln.strip().startswith("#")]
+        print("  批量 %d 句" % len(lines))
+        rows, worst = [], 0
+        for i, s_text in enumerate(lines, 1):
+            code, info = run_one(s_text, job_id="batch_%02d" % i, k=a.k)
+            worst = max(worst, code)
+            bj_p = Path(info.get("dir", "")) / "assembled" / "bounds.json"
+            gaps = []
+            if bj_p.exists():
+                import json as _json
+                gaps = [j["pose_gap_deg"] for j in _json.loads(
+                    bj_p.read_text(encoding="utf-8")).get("junctions", [])]
+            rows.append((i, s_text, code, info.get("dropped") or [], gaps))
+        print()
+        print("  序号 出口 去掉段 交界              句子")
+        for i, s_text, code, dropped, gaps in rows:
+            print("  %-4d %-4d %-6s %-18s %s" % (i, code, "、".join(dropped) or "-",
+                  " ".join("%.0f" % g for g in gaps) or "-", s_text[:38]))
+        print()
+        print("  批量结果：%d 句，最差出口码 %d（0 正常 / 1 有问题 / 2 没出片）" % (len(rows), worst))
         sys.exit(worst)
 
     if not a.sentence:
