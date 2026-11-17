@@ -475,6 +475,96 @@ def _goal_bonus(job, seg, cand):
     return score
 
 
+def repair_junctions(job, sb, ref, pose_th, k_extra=6, gap_limit=90.0):
+    """交界修复：差得大的相邻段，重新生成后一段，挑一个与前一端更贴合的候选。
+
+    为什么放在选择之后
+        逐段的判据只看这一段好不好，看不到它与前一段能不能接上；
+        等 DP 选完再对最差的几处补候选，是针对性的，代价只花在坏的交界上。
+    不覆盖原候选
+        新候选编号从 91 开始，原有文件不动，失败也不会让原来的选择消失。
+    """
+    from hm import finish_job as FJ
+    fixed = 0
+    for i in range(len(sb["segments"]) - 1):
+        A, B = sb["segments"][i], sb["segments"][i + 1]
+        if not A.get("selected") or not B.get("selected"):
+            continue
+        if B.get("support_status") == "unsupported":
+            continue
+        na = int(str(A["selected"]).split("_")[-1])
+        Ja = np.load(job.cand_dir(A["segment_id"], na) / "joints22.npy")
+
+        def gap_to(n):
+            Jb = np.load(job.cand_dir(B["segment_id"], n) / "joints22.npy")
+            b2, _ = FJ.align_pair(Ja, Jb)
+            return FJ.pose_gap(Ja[-1], b2[0])
+
+        cur = int(str(B["selected"]).split("_")[-1])
+        cur_gap = gap_to(cur)
+        job.log("A12 交界候选：%s→%s 原始姿态差 %.0f 度"
+                % (A["segment_id"], B["segment_id"], cur_gap))
+        if cur_gap <= gap_limit:
+            continue
+        prompt = B.get("text_gen_final")
+        n_frames = int(B.get("duration_frames") or 40)
+        model = (B.get("route") or {}).get("model") or config.DEFAULT_MODEL
+        try:
+            from hm import generate as _gen
+            feats = _gen.generate([prompt] * k_extra, [n_frames] * k_extra, name=model)
+        except Exception as e:
+            job.log("A12 交界修复跳过 %s：%s" % (B["segment_id"], str(e)[:60]))
+            continue
+        cands = list(B.get("candidates") or [])
+        for j, F in enumerate(feats, 91):
+            d = job.cand_dir(B["segment_id"], j)
+            np.save(d / "motion263.npy", np.asarray(F))
+            cands.append({"candidate_id": "cand_%02d" % j, "frames": int(len(F)),
+                          "requested_frames": n_frames, "seed": None,
+                          "seed_control": "unsupported", "extra_for_junction": True})
+        B["candidates"] = cands
+        step_a08_a10(job, {"segments": [B]}, ref)
+        def _passed(c):
+            if c.get("decision"):
+                return c["decision"] == "pass"
+            n = int(c["candidate_id"].split("_")[-1])
+            mp = job.cand_dir(B["segment_id"], n) / "metrics.json"
+            try:
+                return json.loads(mp.read_text(encoding="utf-8")).get("decision") == "pass"
+            except Exception:
+                return False
+
+        best, best_gap = None, cur_gap
+        for c in B.get("candidates", []):
+            if not _passed(c):
+                continue
+            n = int(c["candidate_id"].split("_")[-1])
+            pj = job.cand_dir(B["segment_id"], n) / "joints22.npy"
+            if not pj.exists():
+                continue
+            g = gap_to(n)
+            if g < best_gap - 5.0:
+                best, best_gap = n, g
+        _gaps = []
+        for c in B.get("candidates", []):
+            if not _passed(c):
+                continue
+            n = int(c["candidate_id"].split("_")[-1])
+            pj = job.cand_dir(B["segment_id"], n) / "joints22.npy"
+            if pj.exists():
+                _gaps.append((gap_to(n), n))
+        if _gaps:
+            _gaps.sort()
+            job.log("A12 交界尝试：%s→%s 当前 %.0f 度，新增候选最好 %.0f 度（%d 个可用）"
+                    % (A["segment_id"], B["segment_id"], cur_gap, _gaps[0][0], len(_gaps)))
+        if best is not None:
+            B["selected"] = "cand_%02d" % best
+            fixed += 1
+            job.log("A12 交界修复：%s→%s 姿态差 %.0f → %.0f 度（候选 cand_%02d）"
+                    % (A["segment_id"], B["segment_id"], cur_gap, best_gap, best))
+    return fixed
+
+
 def step_a12_a13(job, sb, max_retry=2):
     """A12 淘汰硬失败并排序；A13 对全失败的段做分类。"""
     for seg in sb["segments"]:

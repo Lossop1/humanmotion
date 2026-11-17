@@ -194,6 +194,14 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
             if plan is None:
                 s["segment_decision"] = "manual_review"
 
+    # 交界修复：只对差得大的相邻段补候选，针对性花代价
+    try:
+        _fixed = run_job.repair_junctions(job, sb, ref, pose_th, k_extra=max(4, k), gap_limit=90.0)
+        if _fixed:
+            job.log("交界修复：改选 %d 处" % _fixed)
+    except Exception as _e:
+        job.log("交界修复跳过：%s" % str(_e)[:80])
+
     passed = sum(1 for s in sb["segments"] if s.get("segment_decision") == "pass")
     job.log("A01–A15 汇总：%d/%d 段通过" % (passed, len(sb["segments"])))
     job.save_json("storyboard.json", sb)
