@@ -100,6 +100,23 @@ def reselect_with_pose(job, sb):
     run_job.step_a12_a13(job, sb)
 
 
+def plan_only(sentence, job_id=None):
+    """只跑到 A06（规划与选词），不生成。用于 --explain。"""
+    cfg = {"model": config.DEFAULT_MODEL, "k": None, "fps": 20,
+           "coordinate_system": "HumanML3D", "schema": "storyboard_v1"}
+    job = jobmod.Job(sentence, job_id=job_id)
+    run_job.step_a01(job, cfg)
+    sb, warns = run_job.step_a02(job, sentence)
+    for w in warns:
+        job.log("提醒：" + w)
+    sb, _ = run_job.step_a03(job, sb)
+    run_job.step_a04(job, sb)
+    run_job.step_a05(job, sb)
+    run_job.step_a06(job, sb)
+    job.save_json("storyboard.json", sb)
+    return job, sb
+
+
 def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
     """跑完整条流水线。返回 (视频路径, bounds 字典)；无段通过时返回 (None, None)。"""
     cfg = {"model": config.DEFAULT_MODEL, "k": k, "fps": 20,

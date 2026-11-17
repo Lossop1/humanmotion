@@ -3,7 +3,9 @@
 用法
     python -m hm.main "一个人先向前走，然后转身，最后挥手"
     python -m hm.main "..." --k 6 --job-id myjob
-    python -m hm.main --check          # 冒烟测试：三句各跑一遍，只看能不能出片
+    python -m hm.main --explain "一句话"   # 只做规划，说明这句话能保证到什么程度
+    python -m hm.main --check             # 冒烟测试：三句各跑一遍
+    python -m hm.main --batch 文件        # 批量：每行一句
 
 出口码
     0  出片且几何通过
@@ -79,6 +81,69 @@ def run_one(sentence, job_id=None, k=6):
                                                             mp4=str(mp4), dir=str(job_dir))
 
 
+def explain(sentence, job_id=None):
+    """说明这句话能保证到什么程度：分段、可支持性、能判什么、哪些会合并。"""
+    import contextlib
+    import io as _io
+    import re as _re
+
+    from hm import signature
+
+    _buf = _io.StringIO()
+    with contextlib.redirect_stdout(_buf):
+        job, sb = run_full.plan_only(sentence, job_id=job_id or "explain")
+    segs = sb["segments"]
+
+    # 合并对：相邻两段都不超过 56 帧就会合并
+    pairs, i = [], 0
+    while i + 1 < len(segs):
+        a = int(segs[i].get("duration_frames") or 40)
+        b = int(segs[i + 1].get("duration_frames") or 40)
+        if a <= 56 and b <= 56:
+            pairs.append((i, i + 1))
+            i += 2
+        else:
+            i += 1
+    first = {a for a, _ in pairs}
+    second = {b for _, b in pairs}
+
+    print()
+    print("  原句      %s" % sentence)
+    print("  规划      %d 段（其中 %d 处会合并 → 成片约 %d 段）"
+          % (len(segs), len(pairs), len(segs) - len(pairs)))
+    print()
+    print("  段    帧  支持      能判什么                              提示词")
+    dead = judgeable = 0
+    for idx, seg in enumerate(segs):
+        prompt = seg.get("text_gen_final") or ""
+        status = seg.get("support_status") or "?"
+        fields = [f for pat, f, _th, _w, _k in signature.RULES
+                  if _re.search(pat, prompt.lower())]
+        if status == "unsupported":
+            dead += 1
+        if fields:
+            judgeable += 1
+        note = ""
+        if idx in first:
+            note = "  ⇄ 与下一段合并"
+        elif idx in second:
+            note = "  ⇧ 与上一段合并"
+        print("  %-5s %3s  %-8s %-38s %s%s"
+              % (seg["segment_id"][-3:], seg.get("duration_frames"),
+                 "不支持" if status == "unsupported" else "可支持",
+                 "/".join(fields) if fields else "无法判（无校准量）",
+                 prompt[:36], note))
+    print()
+    if dead == len(segs):
+        print("  结论  这句话做不了：所有段都属于已知做不出来的动作")
+    elif dead:
+        print("  结论  有 %d 段做不出来会被去掉；其余 %d 段出片" % (dead, len(segs) - dead))
+    else:
+        print("  结论  全部段都有生成先例；%d 段可用校准量检查，%d 段只能做几何检查"
+              % (judgeable, len(segs) - judgeable))
+    print("  任务目录  %s" % job.dir)
+    return 0
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -87,7 +152,15 @@ def main():
     ap.add_argument("--job-id", default=None)
     ap.add_argument("--check", action="store_true", help="冒烟测试三句")
     ap.add_argument("--batch", default=None, help="批量文件：每行一句")
+    ap.add_argument("--explain", action="store_true",
+                    help="只做规划，说明这句话能做到什么程度")
     a = ap.parse_args()
+
+    if a.explain:
+        if not a.sentence:
+            ap.print_help()
+            sys.exit(2)
+        sys.exit(explain(a.sentence, a.job_id))
 
     if a.check:
         worst = 0
