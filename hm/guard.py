@@ -31,6 +31,27 @@ CASES = [
     ("dead_end", "一个人爬行", 2, ["做不了"]),
 ]
 
+PLAN_CASE = "一个人向前走，停下，举手，跳一下，转身，最后走开"
+
+
+def check_plan_consistency(job_id="guard_plan"):
+    """预测的合并数与实际合并段数对不上时，运行日志里必须有解释。"""
+    pr = subprocess.run([sys.executable, "-m", "hm.main", PLAN_CASE,
+                         "--compare", "--k", "4", "--job-id", job_id],
+                        cwd=str(ROOT), capture_output=True, text=True)
+    out = (pr.stdout or "") + (pr.stderr or "")
+    import re
+    m = re.search(r"预测合并 (\d+) 处，实际合并段 (\d+) 个", out)
+    if not m:
+        return False, "没找到对照行"
+    pred, act = int(m.group(1)), int(m.group(2))
+    if pred == act:
+        return True, "预测 %d 处合并，实际 %d 个，一致" % (pred, act)
+    log = ROOT / "outputs" / (job_id + "_run") / "run.log"
+    explained = log.exists() and ("退回未合并" in log.read_text(encoding="utf-8", errors="replace"))
+    return explained, "预测 %d 处、实际 %d 个；%s" % (
+        pred, act, "日志有解释" if explained else "日志没有解释")
+
 
 def run_cli(sentence, job_id):
     pr = subprocess.run([sys.executable, "-m", "hm.main", sentence, "--job-id", job_id],
@@ -44,6 +65,12 @@ def main():
     a = ap.parse_args()
 
     failures = []
+
+    # 清掉上次遗留的任务目录：不清会把旧日志与旧状态带进来，造成假失败/假通过
+    import shutil
+    for _d in (ROOT / "outputs").glob("guard_*"):
+        if _d.is_dir():
+            shutil.rmtree(_d, ignore_errors=True)
 
     for name, sentence, want_code, want_words in CASES:
         if a.fast and name == "multi":
@@ -83,6 +110,12 @@ def main():
     if text is not None:
         print("  %-9s %s  %d 行" % ("doc", "通过" if not miss and "测试标记" not in text else "失败",
                                     len(text.splitlines())))
+
+    if not a.fast:
+        ok, msg = check_plan_consistency()
+        if not ok:
+            failures.append("plan：%s" % msg)
+        print("  %-9s %s  %s" % ("plan", "通过" if ok else "失败", msg))
 
     print()
     if failures:

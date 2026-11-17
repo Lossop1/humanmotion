@@ -247,6 +247,9 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
                     p0["candidates"] = []
                     p0["selected"] = None
                     p0["segment_decision"] = None
+                    # 退回后要给足长度：实测「单手举」40 帧 1/4 通过、44 帧 4/4，
+                    # 退回时按 48 帧起步，避免刚退回又因太短全失败
+                    p0["duration_frames"] = max(int(p0.get("duration_frames") or 40), 48)
                     _new.append(p0)
             else:
                 _new.append(seg)
