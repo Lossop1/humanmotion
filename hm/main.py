@@ -115,6 +115,15 @@ def run_one(sentence, job_id=None, k=6):
         (job_dir / "semantics.json").write_text(_json2.dumps(
             [dict(segment=s, status=st, detail=m) for s, st, m in status],
             ensure_ascii=False, indent=1), encoding="utf-8")
+        # 分镜在 semantics.json 之前生成，标不上状态；这里重画一次
+        try:
+            import contextlib as _cl
+            import io as _io2
+            import job_report as _jr
+            with _cl.redirect_stdout(_io2.StringIO()):
+                _jr.report(str(job_dir))
+        except Exception:
+            pass
     except Exception as _e:
         print("  语义验证  跳过（%s）" % str(_e)[:40])
     for name, p in arts:
