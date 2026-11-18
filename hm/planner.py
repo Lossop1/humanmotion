@@ -162,6 +162,15 @@ def _enum(v, allowed):
 
 
 def plan(sentence):
+    # 强制走兜底（HM_PLAN_FALLBACK=1）：用来量「没有大模型时指标退化多少」
+    import os as _os_fb
+    if _os_fb.environ.get("HM_PLAN_FALLBACK", "0") == "1":
+        from hm import planner_fallback as _fb
+        _segs, _trans, _terrain = _fb.plan(sentence)
+        if _segs:
+            return _segs, _trans, _terrain
+        raise RuntimeError("兜底规划认不出这句话：%s" % sentence)
+
     """一句中文 → (段落列表, 过渡列表, 地形)。
 
     段落每项 {label, prompt, frames, source, direction, object, relation, speed}。
