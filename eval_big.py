@@ -54,10 +54,21 @@ SENTENCES = [
 ]
 
 
-def run_round(rnd):
+FRESH_FILE = ROOT / "eval_fresh.txt"
+
+
+def sentences(setname):
+    if setname == "fresh":
+        lines = [ln.strip() for ln in FRESH_FILE.read_text(encoding="utf-8").splitlines()
+                 if ln.strip() and not ln.strip().startswith("#")]
+        return [("F%02d" % i, t) for i, t in enumerate(lines, 1)]
+    return SENTENCES
+
+
+def run_round(rnd, setname="std"):
     rows = []
-    for sid, sent in SENTENCES:
-        job = "big_%s_r%d" % (sid.lower(), rnd)
+    for sid, sent in sentences(setname):
+        job = "%s_%s_r%d" % ("big" if setname == "std" else "frs", sid.lower(), rnd)
         jd = ROOT / "outputs" / job
         if jd.exists():
             shutil.rmtree(jd)
@@ -93,7 +104,7 @@ def run_round(rnd):
             sid, rnd, dt, rec["segments"], rec["frames"],
             [round(g) for g in rec["junctions"]], ",".join(rec["dropped"])), flush=True)
     OUT.mkdir(parents=True, exist_ok=True)
-    p = OUT / ("round%d.json" % rnd)
+    p = OUT / (("round%d.json" % rnd) if setname == "std" else ("fresh%d.json" % rnd))
     p.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
     ok = sum(1 for r in rows if r["ok"])
     print("  轮%d 完成 %d/%d，结果写入 %s" % (rnd, ok, len(rows), p))
@@ -134,9 +145,11 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--round", type=int, default=0)
+    ap.add_argument("--set", default="std", choices=["std", "fresh"],
+                    help="std=30 句标准集，fresh=未参与调参的 10 句")
     ap.add_argument("--report", action="store_true")
     a = ap.parse_args()
     if a.report:
         report()
     elif a.round:
-        run_round(a.round)
+        run_round(a.round, a.set)

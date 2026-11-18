@@ -29,19 +29,28 @@ def latest_round():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--round", type=int, default=0)
+    ap.add_argument("--set", default="std", choices=["std", "fresh"])
     a = ap.parse_args()
 
-    p = (EVAL / ("round%d.json" % a.round)) if a.round else latest_round()
+    pat = "round%d.json" if a.set == "std" else "fresh%d.json"
+    if a.round:
+        p = EVAL / (pat % a.round)
+    elif a.set == "std":
+        p = latest_round()
+    else:
+        fs = sorted(EVAL.glob("fresh*.json"), key=lambda x: int(x.stem.replace("fresh", "")))
+        p = fs[-1] if fs else None
     if p is None or not p.exists():
         print("  没有评测结果可读")
         sys.exit(2)
-    rnd = int(p.stem.replace("round", ""))
+    rnd = int(p.stem.replace("round", "").replace("fresh", ""))
     rows = json.loads(p.read_text(encoding="utf-8"))
 
     from hm import signature
     tag = "r%d" % rnd
+    prefix = "big_s*" if a.set == "std" else "frs_f*"
     planned = selected = passed = suspect = unknown = 0
-    for d in sorted(OUT.glob("big_s*_%s" % tag)):
+    for d in sorted(OUT.glob("%s_%s" % (prefix, tag))):
         sb_p = d / "storyboard.json"
         if not sb_p.exists():
             continue

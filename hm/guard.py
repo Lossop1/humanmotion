@@ -73,6 +73,21 @@ def check_merged_actions(job_id="guard_multi"):
         checked, missing, "" if not detail else "（%s）" % "；".join(detail[:2]))
 
 
+def check_fresh(job_id=None):
+    """新句集（未参与调参）上的可疑数必须为 0，否则判为过拟合或回归。"""
+    pr = subprocess.run([sys.executable, "-m", "hm.capability_report", "--set", "fresh"],
+                        cwd=str(ROOT), capture_output=True, text=True)
+    out = (pr.stdout or "") + (pr.stderr or "")
+    import re as _re
+    m = _re.search(r"其中可疑\s+(\d+)", out)
+    if not m:
+        return False, "没读到新句集的统计"
+    sus = int(m.group(1))
+    m2 = _re.search(r"语义覆盖（可判/总）\s+(\S+)", out)
+    cov = m2.group(1) if m2 else "?"
+    return sus == 0, "新句集可疑 %d（覆盖 %s）" % (sus, cov)
+
+
 def check_plan_consistency(job_id="guard_plan"):
     """预测的合并数与实际合并段数对不上时，运行日志里必须有解释。"""
     pr = subprocess.run([sys.executable, "-m", "hm.main", PLAN_CASE,
@@ -155,6 +170,11 @@ def main():
         if not ok:
             failures.append("merged：%s" % msg)
         print("  %-9s %s  %s" % ("merged", "通过" if ok else "失败", msg))
+
+        ok, msg = check_fresh()
+        if not ok:
+            failures.append("fresh：%s" % msg)
+        print("  %-9s %s  %s" % ("fresh", "通过" if ok else "失败", msg))
 
         ok, msg = check_plan_consistency()
         if not ok:
