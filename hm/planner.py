@@ -134,6 +134,13 @@ def _call(system, user, tries=3):
         except Exception as e:
             last = str(e)
         time.sleep(1.5 * (k + 1))
+    # 大模型不可用（欠费/断网/限流）时退到确定性兜底：只用中文动作词表切句。
+    # 认不出就照旧报错，不假装成功。
+    from hm import planner_fallback
+    _segs, _trans, _terrain = planner_fallback.plan(sentence)
+    if _segs:
+        print("  警告：大模型不可用（%s），改用规则兜底规划" % str(last)[:60])
+        return _segs, _trans, _terrain
     raise RuntimeError("LLM 调用失败：%s" % last)
 
 
