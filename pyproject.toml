@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "humanmotion"
+version = "0.1.0"
+description = "中文长句 → 分镜 → 多段动作生成 → 拼接 → SMPL 网格 → 渲染 的文生动作流水线"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+# 生成与拟合（需要 GPU 与外部模型，见 README）
+gpu = ["torch", "smplx"]
+# 渲染后处理、字幕、分镜图
+render = ["opencv-python", "pillow", "matplotlib"]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+include = ["hm*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+extend-exclude = ["scratch", "outputs"]
+
+[tool.ruff.lint]
+# 先只拦会真出错的问题（语法错误、未定义名）；未使用导入等以后逐步打开
+select = ["E9", "F63", "F7", "F82"]

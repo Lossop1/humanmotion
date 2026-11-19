@@ -1,0 +1,90 @@
+{
+ "job_id": "job_bank6",
+ "segments": [
+  {
+   "segment_id": "seg_001",
+   "candidate": "cand_04",
+   "frames": 48,
+   "align_yaw_deg": 0.0,
+   "stage": "retimed"
+  },
+  {
+   "segment_id": "seg_002",
+   "candidate": "cand_05",
+   "frames": 40,
+   "align_yaw_deg": -2.69,
+   "stage": "retimed"
+  },
+  {
+   "segment_id": "seg_003",
+   "candidate": "cand_06",
+   "frames": 40,
+   "align_yaw_deg": 11.41,
+   "stage": "retimed"
+  },
+  {
+   "segment_id": "seg_004",
+   "candidate": "cand_01",
+   "frames": 52,
+   "align_yaw_deg": 159.32,
+   "stage": "retimed"
+  }
+ ],
+ "junctions": [
+  {
+   "between": [
+    "seg_001",
+    "seg_002"
+   ],
+   "pose_gap_deg": 39.3,
+   "boundary_rate_deg_per_frame": 7.33,
+   "transition_frames": 5,
+   "extreme": false,
+   "method": "param_space_slerp",
+   "w_in_deg_per_frame": 6.31,
+   "w_out_deg_per_frame": 7.33,
+   "curve": "hermite(slope=w/mean)"
+  },
+  {
+   "between": [
+    "seg_002",
+    "seg_003"
+   ],
+   "pose_gap_deg": 134.3,
+   "boundary_rate_deg_per_frame": 1.52,
+   "transition_frames": 60,
+   "extreme": true,
+   "method": "param_space_slerp",
+   "w_in_deg_per_frame": 0.77,
+   "w_out_deg_per_frame": 1.52,
+   "curve": "hermite(slope=w/mean)"
+  },
+  {
+   "between": [
+    "seg_003",
+    "seg_004"
+   ],
+   "pose_gap_deg": 22.1,
+   "boundary_rate_deg_per_frame": 8.51,
+   "transition_frames": 3,
+   "extreme": false,
+   "method": "param_space_slerp",
+   "w_in_deg_per_frame": 6.18,
+   "w_out_deg_per_frame": 8.51,
+   "curve": "hermite(slope=w/mean)"
+  }
+ ],
+ "total_frames": 248,
+ "metrics": {
+  "stage": "retimed",
+  "frames": 248,
+  "bone_length_rel_spread_max": 2.4713807689835275e-06,
+  "foot_height_min": -0.07718396186828613,
+  "root_path_length": 6.847240924835205,
+  "root_step_median": 0.010451710782945156
+ },
+ "fps": 20,
+ "assembly": "param_space",
+ "assembled_ok": true,
+ "assembled_reasons": []
+}

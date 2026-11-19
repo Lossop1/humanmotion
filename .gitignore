@@ -18,3 +18,10 @@ motion-agent/
 # 缓存
 __pycache__/
 *.pyc
+
+# 本地环境与工具缓存
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.deepseek_key
