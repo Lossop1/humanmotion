@@ -30,11 +30,21 @@
       "rate": 0.0
      }
     }
+   },
+   {
+    "text": "a person sits down and stands back up",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
    }
   ],
-  "best": "a person sits down",
-  "best_rate": 0.0,
-  "tested_at": "2026-11-16 15:46:50"
+  "best": "a person sits down and stands back up",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:18"
  },
  "pick": {
   "phrasings": [
@@ -71,7 +81,7 @@
   ],
   "best": "a person picks something up from the floor",
   "best_rate": 1.0,
-  "tested_at": "2026-11-16 15:46:50"
+  "tested_at": "2026-11-19 18:26:25"
  },
  "bend": {
   "phrasings": [
@@ -108,7 +118,7 @@
   ],
   "best": "a person bends forward",
   "best_rate": 1.0,
-  "tested_at": "2026-11-16 15:46:51"
+  "tested_at": "2026-11-19 18:26:19"
  },
  "jump": {
   "phrasings": [
@@ -141,11 +151,21 @@
       "rate": 1.0
      }
     }
+   },
+   {
+    "text": "a person jumps up in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
    }
   ],
   "best": "a person jumps up",
   "best_rate": 1.0,
-  "tested_at": "2026-11-16 15:46:51"
+  "tested_at": "2026-11-19 18:26:24"
  },
  "wave": {
   "phrasings": [
@@ -219,7 +239,7 @@
   ],
   "best": "a person walks backward",
   "best_rate": 1.0,
-  "tested_at": "2026-11-16 15:46:52"
+  "tested_at": "2026-11-19 18:26:15"
  },
  "kick": {
   "phrasings": [
@@ -252,11 +272,21 @@
       "rate": 0.25
      }
     }
+   },
+   {
+    "text": "a person kicks with their right leg",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
    }
   ],
   "best": "a person kicks forward",
   "best_rate": 0.75,
-  "tested_at": "2026-11-16 15:46:52"
+  "tested_at": "2026-11-19 18:26:24"
  },
  "punch": {
   "phrasings": [
@@ -289,10 +319,1034 @@
       "rate": 1.0
      }
     }
+   },
+   {
+    "text": "a person punches forward with the right hand",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
    }
   ],
   "best": "a person punches forward",
   "best_rate": 1.0,
-  "tested_at": "2026-11-16 15:46:53"
+  "tested_at": "2026-11-19 18:26:25"
+ },
+ "walk": {
+  "action_zh": "向前走",
+  "phrasings": [
+   {
+    "text": "a person walks forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person walks forward",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:15"
+ },
+ "walk_left": {
+  "action_zh": "向左走",
+  "phrasings": [
+   {
+    "text": "a person walks to the left",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person walks to the left",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:15"
+ },
+ "walk_right": {
+  "action_zh": "向右走",
+  "phrasings": [
+   {
+    "text": "a person walks to the right",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person walks to the right",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:15"
+ },
+ "run": {
+  "action_zh": "跑",
+  "phrasings": [
+   {
+    "text": "a person runs forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person runs forward",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:15"
+ },
+ "jog": {
+  "action_zh": "慢跑",
+  "phrasings": [
+   {
+    "text": "a person jogs forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person jogs forward",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:16"
+ },
+ "sprint": {
+  "action_zh": "冲刺",
+  "phrasings": [
+   {
+    "text": "a person sprints forward fast",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person sprints forward",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   }
+  ],
+  "best": "a person sprints forward fast",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:16"
+ },
+ "sidestep": {
+  "action_zh": "侧步",
+  "phrasings": [
+   {
+    "text": "a person sidesteps to the left",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person sidesteps to the left",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:16"
+ },
+ "climb": {
+  "action_zh": "上台阶",
+  "phrasings": [
+   {
+    "text": "a person climbs up stairs",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person climbs up stairs",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:16"
+ },
+ "descend": {
+  "action_zh": "下台阶",
+  "phrasings": [
+   {
+    "text": "a person walks down stairs",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person walks down stairs",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:16"
+ },
+ "crawl": {
+  "action_zh": "爬行",
+  "phrasings": [
+   {
+    "text": "a person gets on all fours and crawls forward",
+    "models": {
+     "momask": {
+      "passed": 0,
+      "samples": 4,
+      "rate": 0.0
+     }
+    }
+   }
+  ],
+  "best": "a person gets on all fours and crawls forward",
+  "best_rate": 0.0,
+  "tested_at": "2026-11-19 18:26:17"
+ },
+ "sneak": {
+  "action_zh": "蹑手蹑脚",
+  "phrasings": [
+   {
+    "text": "a person sneaks forward slowly",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person sneaks forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person sneaks forward slowly",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:17"
+ },
+ "skip": {
+  "action_zh": "蹦跳着走",
+  "phrasings": [
+   {
+    "text": "a person skips forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person skips forward",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:17"
+ },
+ "turn": {
+  "action_zh": "转身",
+  "phrasings": [
+   {
+    "text": "a person turns around",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person turns around in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person turns around",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:17"
+ },
+ "turn_left": {
+  "action_zh": "向左转",
+  "phrasings": [
+   {
+    "text": "a person walks forward and turns left",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person walks forward and turns left",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:17"
+ },
+ "turn_right": {
+  "action_zh": "向右转",
+  "phrasings": [
+   {
+    "text": "a person walks forward and turns right",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person walks forward and turns right",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:18"
+ },
+ "spin": {
+  "action_zh": "绕圈走",
+  "phrasings": [
+   {
+    "text": "a person walks in a circle",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person walks in a circle in place",
+    "models": {
+     "momask": {
+      "passed": 1,
+      "samples": 4,
+      "rate": 0.25
+     }
+    }
+   }
+  ],
+  "best": "a person walks in a circle",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:18"
+ },
+ "stand": {
+  "action_zh": "站住",
+  "phrasings": [
+   {
+    "text": "a person stands still",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person stands still in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person stands still",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:18"
+ },
+ "stand_up": {
+  "action_zh": "站起来",
+  "phrasings": [
+   {
+    "text": "a person stands up from a chair",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person stands up from a chair",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:19"
+ },
+ "kneel": {
+  "action_zh": "跪下",
+  "phrasings": [
+   {
+    "text": "a person kneels down on one knee",
+    "models": {
+     "momask": {
+      "passed": 1,
+      "samples": 4,
+      "rate": 0.25
+     }
+    }
+   }
+  ],
+  "best": "a person kneels down on one knee",
+  "best_rate": 0.25,
+  "tested_at": "2026-11-19 18:26:19"
+ },
+ "crouch": {
+  "action_zh": "蹲下",
+  "phrasings": [
+   {
+    "text": "a person crouches down",
+    "models": {
+     "momask": {
+      "passed": 0,
+      "samples": 4,
+      "rate": 0.0
+     }
+    }
+   }
+  ],
+  "best": "a person crouches down",
+  "best_rate": 0.0,
+  "tested_at": "2026-11-19 18:26:19"
+ },
+ "lie": {
+  "action_zh": "躺下",
+  "phrasings": [
+   {
+    "text": "a person lies down on the floor",
+    "models": {
+     "momask": {
+      "passed": 0,
+      "samples": 4,
+      "rate": 0.0
+     }
+    }
+   }
+  ],
+  "best": "a person lies down on the floor",
+  "best_rate": 0.0,
+  "tested_at": "2026-11-19 18:26:19"
+ },
+ "get_up": {
+  "action_zh": "起身",
+  "phrasings": [
+   {
+    "text": "a person gets up from the floor",
+    "models": {
+     "momask": {
+      "passed": 2,
+      "samples": 4,
+      "rate": 0.5
+     }
+    }
+   }
+  ],
+  "best": "a person gets up from the floor",
+  "best_rate": 0.5,
+  "tested_at": "2026-11-19 18:26:19"
+ },
+ "stretch": {
+  "action_zh": "伸展",
+  "phrasings": [
+   {
+    "text": "a person stretches their arms above their head",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   },
+   {
+    "text": "a person stretches their arms above their head in place",
+    "models": {
+     "momask": {
+      "passed": 2,
+      "samples": 4,
+      "rate": 0.5
+     }
+    }
+   }
+  ],
+  "best": "a person stretches their arms above their head",
+  "best_rate": 0.75,
+  "tested_at": "2026-11-19 18:26:19"
+ },
+ "wave_hello": {
+  "action_zh": "挥手打招呼",
+  "phrasings": [
+   {
+    "text": "a person waves hello with the right hand",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person waves hello",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person waves hello in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person waves hello with the right hand",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:20"
+ },
+ "wave_goodbye": {
+  "action_zh": "挥手告别",
+  "phrasings": [
+   {
+    "text": "a person waves goodbye",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person waves goodbye in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person waves goodbye",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:20"
+ },
+ "clap": {
+  "action_zh": "鼓掌",
+  "phrasings": [
+   {
+    "text": "a person claps their hands",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person claps their hands in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person claps their hands",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:20"
+ },
+ "raise_hands": {
+  "action_zh": "举手",
+  "phrasings": [
+   {
+    "text": "a person raises both hands",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person raises both hands in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person raises both hands",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:21"
+ },
+ "point": {
+  "action_zh": "指向前方",
+  "phrasings": [
+   {
+    "text": "a person points forward with the right hand",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person points forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person points forward with the right hand",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:21"
+ },
+ "salute": {
+  "action_zh": "敬礼",
+  "phrasings": [
+   {
+    "text": "a person salutes with the right hand",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person salutes",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person salutes in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person salutes with the right hand",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:22"
+ },
+ "beckon": {
+  "action_zh": "招手示意",
+  "phrasings": [
+   {
+    "text": "a person beckons with the right hand",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person beckons",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   },
+   {
+    "text": "a person beckons in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person beckons with the right hand",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:22"
+ },
+ "hands_hips": {
+  "action_zh": "叉腰",
+  "phrasings": [
+   {
+    "text": "a person puts both hands on the hips",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person puts both hands on the hips in place",
+    "models": {
+     "momask": {
+      "passed": 1,
+      "samples": 4,
+      "rate": 0.25
+     }
+    }
+   }
+  ],
+  "best": "a person puts both hands on the hips",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:22"
+ },
+ "cross_arms": {
+  "action_zh": "抱臂",
+  "phrasings": [
+   {
+    "text": "a person crosses both arms on the chest",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person crosses both arms on the chest in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person crosses both arms on the chest",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:23"
+ },
+ "scratch_head": {
+  "action_zh": "挠头",
+  "phrasings": [
+   {
+    "text": "a person scratches their head with their right hand",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person scratches their head with their right hand",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:23"
+ },
+ "shake_head": {
+  "action_zh": "摇头",
+  "phrasings": [
+   {
+    "text": "a person shakes the head",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   },
+   {
+    "text": "a person shakes the head in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person shakes the head in place",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:23"
+ },
+ "nod": {
+  "action_zh": "点头",
+  "phrasings": [
+   {
+    "text": "a person nods their head",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   },
+   {
+    "text": "a person nods their head in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person nods their head in place",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:23"
+ },
+ "shrug": {
+  "action_zh": "耸肩",
+  "phrasings": [
+   {
+    "text": "a person shrugs the shoulders",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person shrugs the shoulders in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person shrugs the shoulders",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:24"
+ },
+ "jump_forward": {
+  "action_zh": "向前跳",
+  "phrasings": [
+   {
+    "text": "a person jumps forward once",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person jumps forward",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   }
+  ],
+  "best": "a person jumps forward once",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:24"
+ },
+ "hop": {
+  "action_zh": "单脚跳",
+  "phrasings": [
+   {
+    "text": "a person hops on one leg",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person hops on one leg in place",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 4,
+      "rate": 0.75
+     }
+    }
+   }
+  ],
+  "best": "a person hops on one leg",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:24"
+ },
+ "throw": {
+  "action_zh": "投掷",
+  "phrasings": [
+   {
+    "text": "a person throws a ball forward",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person throws a ball forward",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:25"
+ },
+ "push": {
+  "action_zh": "推",
+  "phrasings": [
+   {
+    "text": "a person pushes forward with both hands",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person pushes forward with both hands",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:25"
+ },
+ "pull": {
+  "action_zh": "拉",
+  "phrasings": [
+   {
+    "text": "a person pulls backward with both hands",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person pulls backward with both hands",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:25"
+ },
+ "dance": {
+  "action_zh": "跳舞",
+  "phrasings": [
+   {
+    "text": "a person dances",
+    "models": {
+     "momask": {
+      "passed": 0,
+      "samples": 4,
+      "rate": 0.0
+     }
+    }
+   },
+   {
+    "text": "a person dances in place",
+    "models": {
+     "momask": {
+      "passed": 0,
+      "samples": 4,
+      "rate": 0.0
+     }
+    }
+   }
+  ],
+  "best": "a person dances",
+  "best_rate": 0.0,
+  "tested_at": "2026-11-19 18:26:25"
+ },
+ "squat": {
+  "action_zh": "深蹲",
+  "phrasings": [
+   {
+    "text": "a person squats down and stands up",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person squats down and stands up",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-19 18:26:26"
  }
 }
