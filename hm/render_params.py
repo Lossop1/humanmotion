@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path("/home/chuan/motion-work")
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from hm import config, criteria_v2, finish_job as FJ, job as jobmod
 from hm.assemble_params import joints_of_params

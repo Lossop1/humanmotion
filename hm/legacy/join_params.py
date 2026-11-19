@@ -250,7 +250,7 @@ def joint_depths():
     根=0，脊柱/髋=1，四肢中段=2，手/脚=3。
     依据是运动控制的近端到远端顺序，不是数据拟合。
     """
-    from hm.assemble import BONES
+    from hm.legacy.assemble import BONES
     depth = {0: 0}
     changed = True
     while changed:

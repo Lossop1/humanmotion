@@ -285,7 +285,7 @@ def main():
     print("    上下文 %d + %d + %d = %d 帧" % (ctx, a.n, ctx, len(seq)))
 
     cmd = [str(config.BLENDER), "--background", "--python",
-           str(Path(__file__).with_name("render_skeleton.py")), "--",
+           str((Path(__file__).resolve().parents[1] / "render_skeleton.py")), "--",
            str(out), str(out / "render")]
     subprocess.run(cmd, check=False)
     print("  视频 %s" % (out / "render" / "out.mp4"))

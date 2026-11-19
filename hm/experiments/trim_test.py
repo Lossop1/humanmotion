@@ -3,12 +3,13 @@
 用已有的候选关节，不重新生成。对每处交界，A 段取倒数第 k+1 帧之前、B 段取第 k+1 帧之后。
 """
 import glob
+from pathlib import Path
 import json
 import sys
 
 import numpy as np
 
-ROOT = "/home/chuan/motion-work"
+ROOT = str(Path(__file__).resolve().parents[2])
 sys.path.insert(0, ROOT)
 from hm import finish_job as FJ
 

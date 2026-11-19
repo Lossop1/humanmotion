@@ -9,10 +9,11 @@
     否则 → 不可分，不设规则（或只作提示）
 """
 import sys
+from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, "/home/chuan/motion-work")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from hm import generate, signature, to_joints
 
 K = 6

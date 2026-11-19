@@ -14,7 +14,8 @@ from pathlib import Path
 
 import numpy as np
 
-from hm import config, join as joinmod, join_params as JP, to_joints
+from hm import config, to_joints
+from hm.legacy import join as joinmod, join_params as JP
 
 
 def main():
@@ -69,7 +70,7 @@ def main():
         else:
             ci, cj, m, _dh = joinmod.find_cut(joints[k], joints[k + 1])
         skip_list.append(int(cj))
-        from hm import transition_params as TP
+        from hm.legacy import transition_params as TP
         Jk, Jk1 = joints[k], joints[k + 1]
         rate_in = joinmod.max_bone_angle(Jk[ci - 2], Jk[ci - 1])[0] if ci >= 2 else 0.0
         rate_out = (joinmod.max_bone_angle(Jk1[cj], Jk1[cj + 1])[0]
@@ -141,7 +142,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     verts = JP.verts_from_params(merged)
     # 接地：逐帧最低顶点对齐到地面 0。不画地形，但人不能悬空或沉下去。
-    from hm import terrain as terrainmod
+    from hm.legacy import terrain as terrainmod
     verts, off = terrainmod.apply(verts, np.zeros(len(merged)), window=21)
     merged[:, 83] += off
     print("  接地修正 %.3f ~ %.3f 米" % (float(off.min()), float(off.max())), flush=True)
@@ -158,7 +159,7 @@ def main():
 
     if not a.no_render:
         cmd = [str(config.BLENDER), "--background", "--python",
-               str(Path(__file__).with_name("render_blender.py")), "--",
+               str((Path(__file__).resolve().parents[1] / "render_blender.py")), "--",
                str(out), str(out / "render")]
         subprocess.run(cmd, check=False)
         print("  渲染 %s" % (out / "render" / "out.mp4"), flush=True)

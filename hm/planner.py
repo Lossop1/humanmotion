@@ -13,8 +13,10 @@ import time
 import urllib.request
 
 from hm import config
+from hm.jsonio import load_json
 
 API = "https://api.deepseek.com/chat/completions"
+
 
 def _capability_block():
     """把「生成模型实测能做什么」写成给大模型看的一段说明。
@@ -24,14 +26,11 @@ def _capability_block():
         与其我在后面加一层硬映射，不如把能力清单交给大模型，让它自己选最接近的可用动作，
         并在 label 里标明「近似：…」。
     """
-    import json as _json
     from pathlib import Path as _Path
     p = _Path(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
-    if not p.exists():
-        return ""
-    try:
-        bank = _json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+    # 读不到或损坏时返回空清单：规划仍可进行，但会少了「可用动作」约束，所以损坏时要出声
+    bank = load_json(p, want=dict)
+    if bank is None:
         return ""
     good, bad = [], []
     for key, e in bank.items():
@@ -151,12 +150,19 @@ SYSTEM = """你是人体动作分镜器。给你一句中文描述，输出一�
 
 
 def _key():
+    """优先读环境变量 DEEPSEEK_API_KEY；密钥文件只作旧版兜底并给出警告。"""
+    k = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if k:
+        return k
     for p in (config.ROOT / ".deepseek_key", config.DEPS / ".deepseek_key"):
         if p.exists():
             t = p.read_text(encoding="utf-8").strip()
             if t:
+                import warnings
+                warnings.warn(f"从明文文件 {p} 读取 API key，建议改用环境变量 DEEPSEEK_API_KEY",
+                              stacklevel=2)
                 return t
-    return os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    return ""
 
 
 def _build_system():
@@ -173,7 +179,7 @@ def _fill_capability(system):
 def _call(system, user, tries=3):
     key = _key()
     if not key:
-        raise RuntimeError("没有 API key：找不到 .deepseek_key，也没设 DEEPSEEK_API_KEY")
+        raise RuntimeError("没有 API key：请设置环境变量 DEEPSEEK_API_KEY（旧版 .deepseek_key 文件也可，但不推荐）")
     body = json.dumps({
         "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-flash"),
         "messages": [
@@ -197,13 +203,6 @@ def _call(system, user, tries=3):
         except Exception as e:
             last = str(e)
         time.sleep(1.5 * (k + 1))
-    # 大模型不可用（欠费/断网/限流）时退到确定性兜底：只用中文动作词表切句。
-    # 认不出就照旧报错，不假装成功。
-    from hm import planner_fallback
-    _segs, _trans, _terrain = planner_fallback.plan(sentence)
-    if _segs:
-        print("  警告：大模型不可用（%s），改用规则兜底规划" % str(last)[:60])
-        return _segs, _trans, _terrain
     raise RuntimeError("LLM 调用失败：%s" % last)
 
 
@@ -225,6 +224,11 @@ def _enum(v, allowed):
 
 
 def plan(sentence):
+    """一句中文 → (段落列表, 过渡列表, 地形)。
+
+    段落每项 {label, prompt, frames, source, direction, object, relation, speed}。
+    同一句话只调用一次 LLM：结果按句子缓存，改下游时不必重问，也不会有两份措辞。
+    """
     # 强制走兜底（HM_PLAN_FALLBACK=1）：用来量「没有大模型时指标退化多少」
     import os as _os_fb
     if _os_fb.environ.get("HM_PLAN_FALLBACK", "0") == "1":
@@ -234,18 +238,23 @@ def plan(sentence):
             return _segs, _trans, _terrain
         raise RuntimeError("兜底规划认不出这句话：%s" % sentence)
 
-    """一句中文 → (段落列表, 过渡列表, 地形)。
-
-    段落每项 {label, prompt, frames, source, direction, object, relation, speed}。
-    同一句话只调用一次 LLM：结果按句子缓存，改下游时不必重问，也不会有两份措辞。
-    """
     from hm import cache as _cache
     ck = _cache.key(("plan", sentence))
     cached = _cache.get_json("plan", ck) if _cache.enabled() else None
     if cached is not None:
         return cached["segs"], cached["trans"], cached["terrain"]
     _sys = _build_system()
-    data = _parse(_call(_sys, "<text>%s</text>\n\n按要求输出 JSON。" % sentence))
+    try:
+        data = _parse(_call(_sys, "<text>%s</text>\n\n按要求输出 JSON。" % sentence))
+    except RuntimeError as e:
+        # 大模型不可用（欠费/断网/限流/没配 key）时退到确定性兜底：只用中文动作词表切句。
+        # 认不出就照旧报错，不假装成功；兜底结果不写入缓存。
+        from hm import planner_fallback
+        _segs, _trans, _terrain = planner_fallback.plan(sentence)
+        if _segs:
+            print("  警告：大模型不可用（%s），改用规则兜底规划" % str(e)[:60])
+            return _segs, _trans, _terrain
+        raise
 
     segs = []
     for s in data.get("segments") or []:

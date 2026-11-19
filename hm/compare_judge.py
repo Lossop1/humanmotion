@@ -5,15 +5,15 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path("/home/chuan/motion-work")
+ROOT = Path(__file__).resolve().parent.parent
 J = json.loads((ROOT / "outputs/_semcheck/vlm_judge.json").read_text(encoding="utf-8"))
-CSV = Path("/home/chuan/motion-work/outputs/_semcheck/checklist_filled.csv")
+CSV = (Path(__file__).resolve().parent.parent / "outputs/_semcheck/checklist_filled.csv")
 
 judge = {r["file"]: r for r in J}
 print("  判官结果 %d 段" % len(judge))
 
 # 人工标签来自本地清单，这里由调用方传入一份
-label_path = Path("/home/chuan/motion-work/outputs/_semcheck/human_labels.csv")
+label_path = (Path(__file__).resolve().parent.parent / "outputs/_semcheck/human_labels.csv")
 if not label_path.exists():
     print("  缺 human_labels.csv")
     sys.exit(0)

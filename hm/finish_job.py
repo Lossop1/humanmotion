@@ -22,6 +22,7 @@ import numpy as np
 
 from hm import config, fit as fitmod
 from hm import job as jobmod
+from hm.jsonio import load_json
 
 FACES_SRC = config.OUT_ROOT / "R01-wave-turn-walk" / "faces.npy"
 BONES = jobmod.BONES
@@ -172,7 +173,6 @@ def validate_assembled(J):
 
 def segment_candidates(job, sb):
     """每段可用的候选（只取判据通过的；若该段记录了 allowed，则只在其中取）。"""
-    import json as _json
     out = []
     for seg in sb["segments"]:
         allowed = seg.get("allowed")
@@ -182,9 +182,8 @@ def segment_candidates(job, sb):
                 continue
             n = int(c["candidate_id"].split("_")[-1])
             m = job.dir / "segments" / seg["segment_id"] / ("candidate_%d" % n) / "metrics.json"
-            try:
-                mm = _json.loads(m.read_text(encoding="utf-8"))
-            except Exception:
+            mm = load_json(m, want=dict)
+            if mm is None:
                 continue
             if mm.get("decision") == "pass":
                 cands.append(n)
@@ -207,7 +206,6 @@ def choose_combination(job, sb, verbose=True):
             segs = [(s, c) for s, c in segs if c]
     if any(not c for _, c in segs):
         # 降级：没有通过判据的段，改用问题项最少的候选，并显式记录
-        import json as _j
         relaxed = []
         for s, c in segs:
             if c:
@@ -217,9 +215,8 @@ def choose_combination(job, sb, verbose=True):
             for cd in s.get("candidates", []):
                 n = int(cd["candidate_id"].split("_")[-1])
                 mp = job.dir / "segments" / s["segment_id"] / ("candidate_%d" % n) / "metrics.json"
-                try:
-                    mm = _j.loads(mp.read_text(encoding="utf-8"))
-                except Exception:
+                mm = load_json(mp, want=dict)
+                if mm is None:
                     continue
                 k = len(mm.get("failure_reasons") or [])
                 if k < best_k:

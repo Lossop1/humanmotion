@@ -17,8 +17,9 @@ from pathlib import Path
 
 import numpy as np
 
-from hm import config, join_params as JP, to_joints
-from hm.join import max_bone_angle
+from hm import config, to_joints
+from hm.legacy import join_params as JP
+from hm.legacy.join import max_bone_angle
 
 
 def median_rate(J):
@@ -76,14 +77,14 @@ def main():
         json.dumps({"layout": lay, "mode": "legacy"}, ensure_ascii=False, indent=1), encoding="utf-8")
 
     verts = JP.verts_from_params(merged)
-    from hm import terrain as terrainmod
+    from hm.legacy import terrain as terrainmod
     verts, _ = terrainmod.apply(verts, np.zeros(len(merged)), window=21)
     np.save(out / "verts.npy", verts)
     faces = np.load(run / "faces.npy")
     np.save(out / "faces.npy", faces)
 
     subprocess.run([str(config.BLENDER), "--background", "--python",
-                    str(Path(__file__).with_name("render_blender.py")), "--",
+                    str((Path(__file__).resolve().parents[1] / "render_blender.py")), "--",
                     str(out), str(out / "render")], check=False)
     print("  视频 %s" % (out / "render" / "out.mp4"), flush=True)
 

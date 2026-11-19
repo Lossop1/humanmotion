@@ -13,7 +13,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-ROOT = Path("/home/chuan/motion-work/outputs")
+ROOT = Path(__file__).resolve().parent / "outputs"
 
 
 def _ffmpeg():

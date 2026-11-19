@@ -18,10 +18,10 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, "/home/chuan/motion-work")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from hm import criteria_v2, generate, to_joints
 
-REF = Path("/home/chuan/motion-work/outputs/_reference")
+REF = (Path(__file__).resolve().parent.parent / "outputs/_reference")
 K = 4
 
 CASES = {

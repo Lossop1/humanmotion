@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, "/home/chuan/motion-work")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from hm import config, generate, job as jobmod, pose_rules, repair, to_joints
 from hm.capability import ACTIONS
 
@@ -23,7 +23,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-ROOT = Path("/home/chuan/motion-work")
+ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "outputs" / "_capsheet"
 (OUT / "joints").mkdir(parents=True, exist_ok=True)
 

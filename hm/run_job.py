@@ -8,13 +8,13 @@
 """
 import argparse
 import re
-import json
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 
+from hm.jsonio import load_json
 from hm import config, generate, to_joints
 from hm import job as jobmod
 from hm import planner, sb_schema
@@ -218,13 +218,9 @@ def step_a06(job, sb):
         seg["text_gen_final"] = final
         seg["template_version"] = version
     # 第二道：提示词库。planner 的措辞不如库里测过的写法稳时，用库里的。
-    try:
-        import json as _json
-        from pathlib import Path as _P
-        _bp = _P(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
-        bank = _json.loads(_bp.read_text(encoding="utf-8")) if _bp.exists() else {}
-    except Exception:
-        bank = {}
+    from pathlib import Path as _P
+    _bp = _P(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
+    bank = load_json(_bp, default={}, want=dict)
     from_bank = 0
     import os as _os_bank
     if bank and _os_bank.environ.get("HM_BANK_SUBSTITUTE", "0") == "1":
@@ -655,10 +651,7 @@ def repair_junctions(job, sb, ref, pose_th, k_extra=6, gap_limit=90.0):
                 return c["decision"] == "pass"
             n = int(c["candidate_id"].split("_")[-1])
             mp = job.cand_dir(B["segment_id"], n) / "metrics.json"
-            try:
-                return json.loads(mp.read_text(encoding="utf-8")).get("decision") == "pass"
-            except Exception:
-                return False
+            return load_json(mp, default={}, want=dict).get("decision") == "pass"
 
         best, best_gap = None, cur_gap
         for c in B.get("candidates", []):

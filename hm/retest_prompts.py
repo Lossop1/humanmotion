@@ -3,11 +3,12 @@
 改动依据：从 87384 条描述里统计出的高频句式（见 mine_phrasings 输出）。
 """
 import json
+from pathlib import Path
 import sys
 
 import numpy as np
 
-ROOT = "/home/chuan/motion-work"
+ROOT = str(Path(__file__).resolve().parent.parent)
 sys.path.insert(0, ROOT)
 from hm import criteria_v2, generate, job as jobmod, pose_rules, to_joints
 

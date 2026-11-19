@@ -4,13 +4,14 @@
 如果没有差别，那「改成缓动会更自然」这个说法就没有依据。
 """
 import glob
+from pathlib import Path
 import json
 import sys
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-ROOT = "/home/chuan/motion-work"
+ROOT = str(Path(__file__).resolve().parents[2])
 
 for f in sorted(glob.glob(ROOT + "/outputs/job_p0*/assembled/params.npy")):
     job = f.split("/")[-3]

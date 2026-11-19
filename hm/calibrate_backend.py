@@ -24,11 +24,11 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, "/home/chuan/motion-work")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from hm import generate, to_joints
 from hm.finish_job import BONES, dirs_of, rot_between
 
-REF = Path("/home/chuan/motion-work/outputs/_reference")
+REF = (Path(__file__).resolve().parent.parent / "outputs/_reference")
 PROBES = [
     ("walk", "a person walks forward", 56),
     ("stand", "a person stands still", 40),

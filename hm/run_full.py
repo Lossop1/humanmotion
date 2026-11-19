@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
+from hm.jsonio import load_json
 from hm import config, finish_job, job as jobmod, pose_rules, repair, run_job, to_joints
 
 MAX_ROUNDS = 2
@@ -86,16 +87,14 @@ def step_a11(job, sb):
 
 def reselect_with_pose(job, sb):
     """A12：只做一次选择，交给 run_job.step_a12_a13（唯一实现）。"""
-    import json as _j
     for seg in sb["segments"]:
         rows = []
         for c in seg.get("candidates", []):
             n = int(c["candidate_id"].split("_")[-1])
             mp = job.cand_dir(seg["segment_id"], n) / "metrics.json"
-            try:
-                rows.append(_j.loads(mp.read_text(encoding="utf-8")))
-            except Exception:
-                continue
+            row = load_json(mp, want=dict)
+            if row is not None:
+                rows.append(row)
         seg["candidate_metrics"] = rows
     run_job.step_a12_a13(job, sb)
 
@@ -226,7 +225,6 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
     # 合并段若没有候选能同时做出两个动作，退回未合并的两段重新生成：
     # 合并是为了去掉交界，但不能以悄悄丢掉一个动作为代价。
     # 合并段若一个候选都没过，也算失败：退回未合并重来，别整段丢掉
-    import json as _json2
     for _seg in sb["segments"]:
         if not _seg.get("merged_from") or _seg.get("merged_unverified"):
             continue
@@ -234,12 +232,9 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
         for _c in _seg.get("candidates", []):
             _n = int(_c["candidate_id"].split("_")[-1])
             _mp = job.cand_dir(_seg["segment_id"], _n) / "metrics.json"
-            try:
-                if _json2.loads(_mp.read_text(encoding="utf-8")).get("decision") == "pass":
-                    _any = True
-                    break
-            except Exception:
-                continue
+            if load_json(_mp, default={}, want=dict).get("decision") == "pass":
+                _any = True
+                break
         if not _any:
             _seg["merged_unverified"] = True
             job.log("合并段 %s 无候选通过，退回未合并" % _seg["segment_id"])

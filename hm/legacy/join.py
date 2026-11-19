@@ -21,7 +21,7 @@ import math
 import numpy as np
 
 from hm import config
-from hm.assemble import BONES
+from hm.legacy.assemble import BONES
 
 # 过渡帧数的限速基准。
 # 不要设成固定值：实测 MoMask 自身输出的节奏是
@@ -269,7 +269,7 @@ def blend_frames(pa, pb, params, scope="full"):
       upper  只有上半身走旋转插值，下半身用直接插值
       lower  反过来
     """
-    from hm import decompose as DC
+    from hm.legacy import decompose as DC
 
     dyaw = DC.yaw_gap(pa, pb)                      # 弧度
     pb_al = DC.rotate_yaw(pb, -dyaw)               # 对齐到 pa 的朝向
@@ -284,7 +284,7 @@ def blend_frames(pa, pb, params, scope="full"):
 
 def _blend_one(pa, pb, u, scope):
     """单帧姿态插值（偏航已对齐）。骨长保持不变。"""
-    from hm.assemble import _quat_from_to, _slerp_pow, _rotate, BONES as B
+    from hm.legacy.assemble import _quat_from_to, _slerp_pow, _rotate, BONES as B
     # 不要在这里调 _push_out。它直接把手臂关节推到躯干外侧固定距离，
     # 会改动骨长，而且每插一帧就把端点再改一次，
     # 导致过渡第一帧不等于上一段的真实最后一帧（交界处跳），
@@ -327,7 +327,7 @@ def build(segments, junction_params=None, actions=None, fade=True, verbose=False
           junction_params[i] 是第 i 段与第 i+1 段之间的参数，
           缺省时按两侧动作快慢取默认值。
     """
-    from hm import transition_params as TP
+    from hm.legacy import transition_params as TP
 
     info_actions = dict(enumerate(actions or []))
 
@@ -356,7 +356,7 @@ def build(segments, junction_params=None, actions=None, fade=True, verbose=False
                 # 用含偏航的真实差距，不用只看骨骼方向的旧指标。
                 # 实测过渡两端整体转了 179 度，旧指标只报 59.6 度，差了 3 倍，
                 # 时长按 59.6 度给，结果 0.55 秒转半圈。
-                from hm import decompose as DC
+                from hm.legacy import decompose as DC
                 prm = TP.clamp_params((junction_params or {}).get(i - 1) or
                                       TP.default_params(info_actions.get(i - 1, ""),
                                                         info_actions.get(i, "")))

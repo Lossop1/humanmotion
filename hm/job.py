@@ -102,7 +102,7 @@ def _git_rev(root):
         out = subprocess.run(["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
                              capture_output=True, text=True, timeout=10)
         return out.stdout.strip() or "unknown"
-    except Exception:
+    except (OSError, subprocess.SubprocessError):   # 没装 git / 超时：版本号只是记录用
         return "unknown"
 
 

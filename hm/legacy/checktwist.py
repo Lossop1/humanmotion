@@ -16,9 +16,10 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from hm import config, fit as FM, join_params as JP, trial as TR  # noqa: E402
+from hm import config, fit as FM
+from hm.legacy import join_params as JP, trial as TR  # noqa: E402
 
 BONE_NAMES = ["骨盆→左髋", "左髋→左膝", "左膝→左踝", "左踝→左脚",
               "骨盆→右髋", "右髋→右膝", "右膝→右踝", "右踝→右脚",

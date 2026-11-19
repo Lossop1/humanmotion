@@ -10,22 +10,17 @@
     质量类阈值只在「这个后端做过校准、且这个动作在探针集里」时使用；
     否则返回 None，调用方必须按「不判」处理，不能退回别人的阈值。
 """
-import json
 from pathlib import Path
 
 from hm import backends
+from hm.jsonio import load_json
 
 REF = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
 
 
 def thresholds(backend):
     p = REF / ("criteria_%s.json" % backend)
-    if not p.exists():
-        return None
-    try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
-        return None
+    return load_json(p, want=dict)
 
 
 def limit(backend, field, action=None):

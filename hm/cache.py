@@ -20,6 +20,8 @@ import os
 import shutil
 from pathlib import Path
 
+from hm.jsonio import load_json
+
 CACHE_VERSION = 1
 ROOT = Path(__file__).resolve().parent.parent / "outputs" / "_cache"
 
@@ -51,13 +53,8 @@ def path(kind, k, suffix):
 
 
 def get_json(kind, k):
-    p = path(kind, k, "json")
-    if p.exists():
-        try:
-            return json.loads(p.read_text(encoding="utf-8"))
-        except Exception:
-            return None
-    return None
+    # 缓存损坏当作没命中，重算即可，所以不必吵；但程序错误不吞
+    return load_json(path(kind, k, "json"), warn_on_corrupt=False)
 
 
 def put_json(kind, k, obj):

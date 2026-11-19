@@ -1,11 +1,12 @@
 """直接对当前 params 打印每个过渡窗口内的逐帧速度，与 bounds.json 对齐。"""
 import json
+from pathlib import Path
 import sys
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-ROOT = "/home/chuan/motion-work"
+ROOT = str(Path(__file__).resolve().parents[2])
 job = sys.argv[1] if len(sys.argv) > 1 else "job_p01"
 P = np.load("%s/outputs/%s/assembled/params.npy" % (ROOT, job))
 b = json.load(open("%s/outputs/%s/assembled/bounds.json" % (ROOT, job), encoding="utf-8"))

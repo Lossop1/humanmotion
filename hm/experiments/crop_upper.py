@@ -10,7 +10,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-ROOT = Path("/home/chuan/motion-work")
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def silhouette(f):

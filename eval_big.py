@@ -17,7 +17,7 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path("/home/chuan/motion-work")
+ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "outputs" / "_eval_big"
 
 SENTENCES = [

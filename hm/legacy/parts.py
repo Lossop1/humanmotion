@@ -8,7 +8,7 @@
     ALL.mp4            合体（A1 + T1 + A2）
 
 用法：
-    python -m hm.parts "一个人先挥手打招呼，然后向前走开" --out P03
+    python -m hm.legacy.parts "一个人先挥手打招呼，然后向前走开" --out P03
 """
 import argparse
 import json
@@ -22,7 +22,7 @@ import numpy as np
 
 from hm import config, generate, planner, to_joints
 from hm import fit as fitmod
-from hm import join_params as JP
+from hm.legacy import join_params as JP
 
 FACES_SRC = config.OUT_ROOT / "R01-wave-turn-walk" / "faces.npy"
 
@@ -34,7 +34,7 @@ UNSUPPORTED = ("crouch", "squat", "sit down", "sitting", "kneel", "lie down", "l
 def render(folder, name):
     """把该文件夹的顶点渲成视频，复制成 <name>.mp4 放在上层。"""
     subprocess.run([str(config.BLENDER), "--background", "--python",
-                    str(Path(__file__).with_name("render_blender.py")), "--",
+                    str((Path(__file__).resolve().parents[1] / "render_blender.py")), "--",
                     str(folder), str(folder / "render")], check=False)
     src = folder / "render" / "out.mp4"
     if not src.exists():

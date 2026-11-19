@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path("/home/chuan/motion-work")
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from hm import criteria_v2, job as jobmod, pose_rules
 from hm.capability import ACTIONS, APPROX_TH, SUPPORT_TH, classify

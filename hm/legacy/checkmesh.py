@@ -15,9 +15,10 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from hm import config, fit as FM, join_params as JP  # noqa: E402
+from hm import config, fit as FM
+from hm.legacy import join_params as JP  # noqa: E402
 
 PARTS = {"头": 15, "左肩": 16, "右肩": 17, "左肘": 18, "右肘": 19,
          "左腕": 20, "右腕": 21, "骨盆": 0, "左膝": 4, "右膝": 5,

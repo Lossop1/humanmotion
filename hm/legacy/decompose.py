@@ -17,7 +17,7 @@ import math
 import numpy as np
 
 from hm import config
-from hm.assemble import BONES
+from hm.legacy.assemble import BONES
 
 
 def body_yaw(J_frame):

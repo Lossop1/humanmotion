@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path("/home/chuan/motion-work/outputs")
+ROOT = Path(__file__).resolve().parent / "outputs"
 
 
 def report(job_id):

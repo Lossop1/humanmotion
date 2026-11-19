@@ -16,9 +16,10 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from hm import config, to_joints, trial as TR  # noqa: E402
+from hm import config, to_joints
+from hm.legacy import trial as TR  # noqa: E402
 
 LEG = {"L": (1, 4, 7, 10), "R": (2, 5, 8, 11)}
 ARM = {"L": (16, 18, 20), "R": (17, 19, 21)}

@@ -8,10 +8,10 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-ROOT = Path("/home/chuan/motion-work")
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from hm import fit as FM, generate, to_joints
-from hm.probe_rot2 import joint_rots
+from hm.experiments.probe_rot2 import joint_rots
 
 FM._patch_paths()
 HEAD = 15

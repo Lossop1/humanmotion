@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 
-ROOT = Path("/home/chuan/motion-work")
+ROOT = Path(__file__).resolve().parent.parent
 KEY = (ROOT / ".deepseek_key").read_text().strip()
 API = "https://api.deepseek.com/chat/completions"
 MODEL = "deepseek-flash"
