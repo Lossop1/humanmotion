@@ -159,6 +159,12 @@ def _key():
     return os.environ.get("DEEPSEEK_API_KEY", "").strip()
 
 
+def _build_system():
+    """新版系统提示（XML 分块 + 示例 + 自检），见 hm/planner_prompt.py。"""
+    from hm import planner_prompt
+    return planner_prompt.build(_capability_block())
+
+
 def _fill_capability(system):
     """把能力清单填进系统提示。"""
     return system.replace("{CAPABILITY}", _capability_block())
@@ -238,7 +244,8 @@ def plan(sentence):
     cached = _cache.get_json("plan", ck) if _cache.enabled() else None
     if cached is not None:
         return cached["segs"], cached["trans"], cached["terrain"]
-    data = _parse(_call(_fill_capability(SYSTEM), "描述：%s\n\n请输出 JSON。" % sentence))
+    _sys = _build_system()
+    data = _parse(_call(_sys, "<text>%s</text>\n\n按要求输出 JSON。" % sentence))
 
     segs = []
     for s in data.get("segments") or []:
@@ -280,6 +287,9 @@ def plan(sentence):
         trans.append({"junction": j, "duration_s": max(0.15, min(1.20, d)), "ease": ease})
 
     terrain = data.get("terrain") or {"start_y": 0.0, "profile": []}
+    if not isinstance(terrain, dict):
+        # 大模型有时把地形写成 "flat" 这样的字符串；容错成「平地」
+        terrain = {"start_y": 0.0, "profile": []}
     if not isinstance(terrain.get("profile"), list):
         terrain["profile"] = []
     if _cache.enabled():
