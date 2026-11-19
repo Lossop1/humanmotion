@@ -16,6 +16,58 @@ from hm import config
 
 API = "https://api.deepseek.com/chat/completions"
 
+def _capability_block():
+    """把「生成模型实测能做什么」写成给大模型看的一段说明。
+
+    为什么放在提示里
+        文学描述里的动词（撺将下来、翻身闪避）不在模型词表里，直接交给生成模型只会得到泛化动作。
+        与其我在后面加一层硬映射，不如把能力清单交给大模型，让它自己选最接近的可用动作，
+        并在 label 里标明「近似：…」。
+    """
+    import json as _json
+    from pathlib import Path as _Path
+    p = _Path(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
+    if not p.exists():
+        return ""
+    try:
+        bank = _json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    good, bad = [], []
+    for key, e in bank.items():
+        rate = e.get("best_rate", 0)
+        zh = e.get("action_zh") or key
+        # 推荐写法里避开复合句（含 and），否则大模型会照抄成一句话包含两个动作
+        cands = [r.get("text", "") for r in e.get("phrasings", [])
+                 if r.get("text") and " and " not in r["text"]]
+        best = (cands[0] if cands else (e.get("best") or "")).strip()
+        if rate >= 0.75:
+            good.append("%s → %s" % (zh, best))
+        elif rate <= 0.0:
+            bad.append(zh)
+    if not good:
+        return ""
+    lines = ["## 生成模型实测能做什么（必须照此选词）", "",
+             "可用动作（中文 → 推荐英文写法，均已实测通过）："]
+    for i in range(0, len(good), 3):
+        lines.append("  " + "｜".join(good[i:i + 3]))
+    if bad:
+        lines += ["", "不可用（实测 0 通过，不要使用）：" + "、".join(bad)]
+    lines += ["",
+              "选词规则：",
+              "1 每段 prompt 都要落到上面「可用动作」的写法上，可再加方向与快慢。",
+              "2 原文动词不在可用列表里时（例如「撺将下来」「翻身闪避」），",
+              "  选一个最接近的可用动作，并在 label 前面加「近似：」。",
+              "3 兽类动作、物体操作、情绪状态无法表现时，仍给一段最接近的人体动作，",
+              "  同样在 label 里写「近似：」并说明原文说的是什么。",
+              "4 source 仍然必须逐字摘录原文，不许因为改写成近似动作就改动 source。",
+              "5 prompt 必须逐字取自上面「可用动作」的英文写法，只允许再补方向与快慢；",
+              "  不要在列表写法之外自行添加名词、对象或姿势（例如 dough、chair、ledge、",
+              "  with effort 这类），实测这些都会让生成失败。",
+              "6 原文里的对象（面团、椅子、虎）不写进 prompt；它们只出现在 source 与 label 里。"]
+    return "\n".join(lines)
+
+
 SYSTEM = """你是人体动作分镜器。给你一句中文描述，输出一段可以直接交给动作生成模型的英文分镜。
 
 只输出 JSON，不要解释。
@@ -107,6 +159,11 @@ def _key():
     return os.environ.get("DEEPSEEK_API_KEY", "").strip()
 
 
+def _fill_capability(system):
+    """把能力清单填进系统提示。"""
+    return system.replace("{CAPABILITY}", _capability_block())
+
+
 def _call(system, user, tries=3):
     key = _key()
     if not key:
@@ -181,7 +238,7 @@ def plan(sentence):
     cached = _cache.get_json("plan", ck) if _cache.enabled() else None
     if cached is not None:
         return cached["segs"], cached["trans"], cached["terrain"]
-    data = _parse(_call(SYSTEM, "描述：%s\n\n请输出 JSON。" % sentence))
+    data = _parse(_call(_fill_capability(SYSTEM), "描述：%s\n\n请输出 JSON。" % sentence))
 
     segs = []
     for s in data.get("segments") or []:
