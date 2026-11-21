@@ -196,7 +196,23 @@ def _call(system, user, tries=3):
         })
         try:
             with urllib.request.urlopen(req, timeout=120) as r:
-                txt = json.loads(r.read().decode("utf-8"))["choices"][0]["message"]["content"]
+                _data = json.loads(r.read().decode("utf-8"))
+            txt = _data["choices"][0]["message"]["content"]
+            # 记一次用量：模型、耗时、字符数、token（接口给了就记）
+            try:
+                from pathlib import Path as _P
+                import datetime as _dt
+                _rec = {"at": _dt.datetime.now().isoformat(timespec="seconds"),
+                        "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-flash"),
+                        "prompt_chars": len(system) + len(user),
+                        "reply_chars": len(txt or ""),
+                        "usage": _data.get("usage") or {}}
+                _p = _P(__file__).resolve().parent.parent / "outputs" / "_usage.jsonl"
+                _p.parent.mkdir(parents=True, exist_ok=True)
+                with _p.open("a", encoding="utf-8") as _f:
+                    _f.write(json.dumps(_rec, ensure_ascii=False) + "\n")
+            except Exception:
+                pass
             if txt and txt.strip():
                 return txt
             last = "空回复"

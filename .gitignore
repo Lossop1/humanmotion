@@ -25,3 +25,5 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 .deepseek_key
+outputs/_usage.jsonl
+outputs/_review/
