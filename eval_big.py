@@ -18,6 +18,9 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+
+# 对照实验用：每段候选数（默认 6）
+K_OVERRIDE = int(__import__("os").environ.get("HM_EVAL_K", "6"))
 OUT = ROOT / "outputs" / "_eval_big"
 
 SENTENCES = [
@@ -73,7 +76,8 @@ def run_round(rnd, setname="std"):
         if jd.exists():
             shutil.rmtree(jd)
         t0 = time.time()
-        pr = subprocess.run([sys.executable, "-m", "hm.run_full", sent, "--job-id", job],
+        pr = subprocess.run([sys.executable, "-m", "hm.run_full", sent, "--job-id", job,
+                             "--k", str(K_OVERRIDE)],
                             cwd=str(ROOT), capture_output=True, text=True)
         # 子进程输出留档，失败时才有东西可查（上一轮 16 句失败却无日志）
         (ROOT / "outputs" / ("%s.log" % job)).write_text(
@@ -145,6 +149,7 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--round", type=int, default=0)
+    ap.add_argument("--k", type=int, default=6, help="每段候选数（对照实验用）")
     ap.add_argument("--set", default="std", choices=["std", "fresh"],
                     help="std=30 句标准集，fresh=未参与调参的 10 句")
     ap.add_argument("--report", action="store_true")

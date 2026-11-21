@@ -267,7 +267,9 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
 
     # 交界修复：只对差得大的相邻段补候选，针对性花代价
     try:
-        _fixed = run_job.repair_junctions(job, sb, ref, pose_th, k_extra=max(4, k), gap_limit=90.0)
+        import os as _os_rep
+        _fixed = 0 if _os_rep.environ.get("HM_NO_REPAIR", "0") == "1" else \
+            run_job.repair_junctions(job, sb, ref, pose_th, k_extra=max(4, k), gap_limit=90.0)
         if _fixed:
             job.log("交界修复：改选 %d 处" % _fixed)
     except Exception as _e:
