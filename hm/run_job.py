@@ -150,6 +150,21 @@ def step_a04(job, sb):
 
 
 def step_a05(job, sb):
+    """A05 路由。设 HM_FORCE_BACKEND=<名字> 可强制所有段用同一个后端（换后端演练用）。"""
+    import os as _os_b
+    _force = _os_b.environ.get("HM_FORCE_BACKEND", "").strip()
+    if _force:
+        from hm import backends as _bk
+        if _force not in _bk.BACKENDS:
+            raise KeyError("HM_FORCE_BACKEND 未注册的后端：%s（已注册：%s）"
+                           % (_force, "、".join(_bk.BACKENDS)))
+        for seg in sb["segments"]:
+            seg["route"] = {"model": _force, "model_version": _bk.BACKENDS[_force].get("entry", _force),
+                            "status": "forced",
+                            "reason": "HM_FORCE_BACKEND=%s" % _force, "detail": {}}
+        job.log("A05 强制后端：%d 段全部用 %s" % (len(sb["segments"]), _force))
+        return sb
+
     """A05：按能力表逐段选后端。未注册的后端直接拒绝，不静默回退。"""
     from hm import backends
     picked = []
