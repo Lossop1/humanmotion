@@ -24,6 +24,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "outputs"
 REVIEW = OUT / "_review"
+DIR_OVERRIDE = None
+
+
+def _review_dir():
+    return Path(DIR_OVERRIDE) if DIR_OVERRIDE else REVIEW
 
 # 两批：标准集（参与过调参）与新句集（没参与过）；盲评时混在一起
 BATCHES = [("std", "r20", "big_s%02d_%s"), ("fresh", "r1", "frs_f%02d_%s")]
@@ -80,13 +85,20 @@ def build(seed=20261121, limit=None):
 
 
 def score(sheet_path):
-    key = json.loads((REVIEW / "answer_key.json").read_text(encoding="utf-8"))
-    rows = list(csv.DictReader(Path(sheet_path).open(encoding="utf-8")))
-    got = [(r["clip"], (r["verdict"] or "").strip()) for r in rows]
+    key = json.loads((_review_dir() / "answer_key.json").read_text(encoding="utf-8"))
+    # Excel 存出来的 CSV 常带 BOM，统一用 utf-8-sig 读
+    rows = list(csv.DictReader(Path(sheet_path).open(encoding="utf-8-sig")))
+    def _norm(c):
+        c = (c or "").strip()
+        return c if c.endswith(".mp4") else c + ".mp4"
+    got = [(_norm(r["clip"]), (r["verdict"] or "").strip()) for r in rows]
     filled = [(c, v) for c, v in got if v in ("对", "部分", "错")]
     if not filled:
         print("  sheet 还没有判定，先在 verdict 列填 对/部分/错")
         return
+    missing = len(got) - len(filled)
+    if missing:
+        print("  提醒：还有 %d 条没填（总 %d 条），下面的比例只按已填的算" % (missing, len(got)))
     def rate(name, items):
         n = len(items)
         ok = sum(1 for c, v in items if v == "对")
@@ -120,7 +132,10 @@ def main():
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--score", default=None)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--dir", default=None, help="盲评包目录（默认 outputs/_review）")
     a = ap.parse_args()
+    if a.dir:
+        globals()["DIR_OVERRIDE"] = a.dir
     if a.build:
         build(limit=a.limit or None)
     elif a.score:
