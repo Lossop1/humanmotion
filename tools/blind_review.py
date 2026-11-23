@@ -62,11 +62,11 @@ def build(seed=20261121, limit=None):
         key[clip] = {"set": it["set"], "sid": it["sid"], "sentence": it["sentence"], "job": it["job"]}
         print("  %s ← %s （%s）" % (clip, it["job"], "标准集" if it["set"] == "std" else "新句集"))
     (REVIEW / "answer_key.json").write_text(json.dumps(key, ensure_ascii=False, indent=1), encoding="utf-8")
-    with (REVIEW / "sheet.csv").open("w", encoding="utf-8", newline="") as f:
+    with (_review_dir() / "sheet.csv").open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["clip", "verdict", "note"])
-        for clip in key:
-            w.writerow([clip, "", ""])
+        w.writerow(["clip", "sentence", "verdict", "note"])
+        for clip, info in key.items():
+            w.writerow([clip, info["sentence"], "", ""])
     readme = REVIEW / "README.txt"
     readme.write_text(
         "盲评说明\n\n"
@@ -87,7 +87,19 @@ def build(seed=20261121, limit=None):
 def score(sheet_path):
     key = json.loads((_review_dir() / "answer_key.json").read_text(encoding="utf-8"))
     # Excel 存出来的 CSV 常带 BOM，统一用 utf-8-sig 读
-    rows = list(csv.DictReader(Path(sheet_path).open(encoding="utf-8-sig")))
+    # Excel 在中文 Windows 上可能存成 GBK，按顺序试几种编码
+    _rows = None
+    for _enc in ("utf-8-sig", "utf-8", "gbk", "cp936"):
+        try:
+            with Path(sheet_path).open(encoding=_enc, newline="") as _f:
+                _rows = list(csv.DictReader(_f))
+            break
+        except (UnicodeDecodeError, LookupError):
+            continue
+    if _rows is None:
+        print("  读不出 sheet（编码问题）：请用记事本另存为 UTF-8，或在 Excel 里选「CSV UTF-8」")
+        return
+    rows = _rows
     def _norm(c):
         c = (c or "").strip()
         return c if c.endswith(".mp4") else c + ".mp4"
