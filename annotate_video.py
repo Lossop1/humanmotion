@@ -64,7 +64,7 @@ def annotate(job_id, out_name="final_captioned.mp4", crf=16):
     if sem_p.exists():
         try:
             for row in json.loads(sem_p.read_text(encoding="utf-8")):
-                mark_of[row["segment"][-3:]] = {"通过": "[OK]", "无法判": "[?]",
+                mark_of[row["segment"][-3:]] = {"通过": "[OK]", "无法判": "[?]", "未验证": "[?]",
                                                 "可疑": "[X]", "未选中": "[-]"}.get(row["status"], "")
         except Exception:
             mark_of = {}

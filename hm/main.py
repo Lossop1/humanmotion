@@ -47,13 +47,45 @@ def verify_segments(job_dir, sb):
             out.append((seg["segment_id"][-3:], "未选中", ""))
             continue
         prompt = seg.get("text_gen_final") or ""
-        ok, bad, _det = signature.check(prompt, signature.signature(_np.load(jp)))
-        if ok is None:
-            out.append((seg["segment_id"][-3:], "无法判", "无校准量"))
-        elif ok:
-            out.append((seg["segment_id"][-3:], "通过", ""))
+        sig = signature.signature(_np.load(jp))
+        # 合并段要按拆开的两个动作分别查：任一子动作「无法判」时，整段只能算「未验证」，
+        # 不能算「通过」——否则一个没做出来的挥手会被 merged 的另一半掩盖过去。
+        # 规划层自己标注的「近似：…」同样不算通过：这说明原文动作做不出来
+        _label = (seg.get("label") or "")
+        if _label.startswith("近似"):
+            out.append((seg["segment_id"][-3:], "未验证", _label[:40]))
+            continue
+        _dead = signature.dead_end_in(prompt)
+        if _dead:
+            out.append((seg["segment_id"][-3:], "未验证", "含做不出来的动作：%s（已近似）" % _dead))
+            continue
+        # 近似代替（原文动作做不出来）同样算未验证，不能报「通过」
+        if seg.get("approx_from_unsupported"):
+            out.append((seg["segment_id"][-3:], "未验证", "原文动作做不出来，已用近似动作代替"))
+            continue
+        if seg.get("merged_from"):
+            parts = [p.strip() for p in prompt.split(" and ") if p.strip()]
+            statuses = []
+            for part in parts:
+                body = part if part.lower().startswith("a person") else "a person " + part
+                ok, bad, _det = signature.check(body, sig)
+                statuses.append((part[:24], ok, bad))
+            if any(ok is False for _p, ok, _b in statuses):
+                bad_names = "、".join(b[0] for _p, ok, b in statuses if ok is False)
+                out.append((seg["segment_id"][-3:], "可疑", bad_names))
+            elif any(ok is None for _p, ok, _b in statuses):
+                miss = "、".join(p for p, ok, _b in statuses if ok is None)
+                out.append((seg["segment_id"][-3:], "未验证", "子动作无法判：" + miss))
+            else:
+                out.append((seg["segment_id"][-3:], "通过", ""))
         else:
-            out.append((seg["segment_id"][-3:], "可疑", "、".join(b[0] for b in bad)))
+            ok, bad, _det = signature.check(prompt, sig)
+            if ok is None:
+                out.append((seg["segment_id"][-3:], "无法判", "无校准量"))
+            elif ok:
+                out.append((seg["segment_id"][-3:], "通过", ""))
+            else:
+                out.append((seg["segment_id"][-3:], "可疑", "、".join(b[0] for b in bad)))
     return out
 
 
@@ -106,12 +138,18 @@ def run_one(sentence, job_id=None, k=6):
         sb2 = _json2.loads((job_dir / "storyboard.json").read_text(encoding="utf-8"))
         status = verify_segments(job_dir, sb2)
         passed = sum(1 for _s, st, _m in status if st == "通过")
-        unknown = [s for s, st, _m in status if st == "无法判"]
+        unknown = [s for s, st, _m in status if st in ("无法判", "未验证")]
         suspect = [s for s, st, m in status if st == "可疑"]
-        print("  语义验证  %d/%d 段通过校准量%s%s"
-              % (passed, len(status),
-                 "；无法判 %s" % "/".join(unknown) if unknown else "",
+        print("  语义验证  %d 段通过 / %d 段未验证 / %d 段可疑（共 %d 段）%s%s"
+              % (passed, len(unknown), len(suspect), len(status),
+                 "；未验证 %s" % "/".join(unknown) if unknown else "",
                  "；可疑 %s" % "/".join(suspect) if suspect else ""))
+        _approx_n = sum(1 for seg in sb2.get("segments", []) if seg.get("approx_from_unsupported"))
+        _trim = sum(int(seg.get("trim_tail") or 0) for seg in sb2.get("segments", []))
+        if _approx_n:
+            print("  近似代替  %d 段：原文动作做不出来，用最接近的动作代替（不算通过）" % _approx_n)
+        if _trim:
+            print("  截尾      %d 帧（交界过大时截掉前段末尾，已在成片体现）" % _trim)
         (job_dir / "semantics.json").write_text(_json2.dumps(
             [dict(segment=s, status=st, detail=m) for s, st, m in status],
             ensure_ascii=False, indent=1), encoding="utf-8")
@@ -129,7 +167,10 @@ def run_one(sentence, job_id=None, k=6):
     for name, p in arts:
         if p.exists():
             print("  产物 %-4s %s" % (name, p))
-    return (0 if (mp4 and ok and not dropped) else 1), dict(ok=bool(ok), dropped=dropped,
+    # 有可疑段就不再算「正常」：可疑意味着这一段做不出它该做的动作
+    _suspect_n = sum(1 for _s, st, _m in status if st == "可疑") if "status" in dir() else 0
+    _bad = _suspect_n + _approx_n
+    return (0 if (mp4 and ok and not dropped and not _bad) else 1), dict(ok=bool(ok), dropped=dropped,
                                                             mp4=str(mp4), dir=str(job_dir))
 
 

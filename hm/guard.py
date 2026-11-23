@@ -47,6 +47,7 @@ def check_merged_actions(job_id="guard_multi"):
         return False, "没有 %s 的结果可查" % job_id
     sb = _json.loads(sb_p.read_text(encoding="utf-8"))
     checked = missing = 0
+    unverified = []
     detail = []
     for seg in sb.get("segments", []):
         if not seg.get("merged_from") or not seg.get("selected"):
@@ -64,13 +65,18 @@ def check_merged_actions(job_id="guard_multi"):
             ok, _bad, _det = signature.check(body, sig)
             if ok is False:
                 fails.append(part[:24])
+            elif ok is None:
+                # 无法判的子动作不等于通过；单独计数，让报告说实话
+                unverified.append(part[:24])
         if fails:
             missing += 1
             detail.append("%s 缺 %s" % (seg["segment_id"], "/".join(fails)))
     if checked == 0:
         return False, "没有合并段可查（合并逻辑可能没生效）"
-    return missing == 0, "合并段 %d 个，动作缺失 %d 个%s" % (
-        checked, missing, "" if not detail else "（%s）" % "；".join(detail[:2]))
+    msg = "合并段 %d 个，动作缺失 %d 个，子动作无法判 %d 个%s" % (
+        checked, missing, len(unverified),
+        "" if not detail else "（%s）" % "；".join(detail[:2]))
+    return missing == 0, msg
 
 
 def check_fresh(job_id=None):

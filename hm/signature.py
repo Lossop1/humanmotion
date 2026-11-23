@@ -142,6 +142,25 @@ def signature(J):
     }
 
 
+DEAD_END_STEMS = {
+    "crawl": ("crawl",), "crouch": ("crouch",), "lie": ("lie", "lying", "lies down"),
+    "dance": ("danc",), "kneel": ("kneel",), "get_up": ("get up", "gets up", "stood up"),
+}
+
+
+def dead_end_in(prompt):
+    """提示词里是否含实测做不出来的动作（G2 的死路）。返回中文动作名或空串。
+
+    必要性：像「躺下再走」这类句子，规划会给出一整段含 lie 的提示词，
+    签名只查得出「走了」，查不出「没躺下」——不拦就会报「通过」。
+    """
+    text = str(prompt).lower()
+    for key, stems in DEAD_END_STEMS.items():
+        if any(st in text for st in stems):
+            return key
+    return ""
+
+
 def check(prompt, sig, backend=None):
     """返回 (ok, 不合格项, 观察值)。没有规则命中时 ok 为 None。"""
     text = str(prompt).lower()

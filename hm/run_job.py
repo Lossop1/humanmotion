@@ -549,6 +549,9 @@ def merge_short_segments(job, sb, limit_frames=56):
                 originals.extend([_copy.deepcopy(a), _copy.deepcopy(b)])
                 # 合并后要重新判定可支持性：单动作「蹲下」做不出来，
                 # 但「蹲下再站起」整体是能力表 10/10 的条目，不能沿用旧结论
+                # 原文动作若已判「做不出来」，合并后仍要记住：这是近似代替，不是原意
+                if a.get("support_status") == "unsupported" or b.get("support_status") == "unsupported":
+                    merged["approx_from_unsupported"] = True
                 merged["support_status"] = "unverified"
                 merged["support_reason"] = "合并段，需重新判定"
                 if not merged.get("route"):
