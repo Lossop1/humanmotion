@@ -13,6 +13,20 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.." || { echo "找不到仓库根目录"; exit 2; }
 
+# 没激活环境时先尝试 source ./env.sh（GPU 机器上就是这么用的）；
+# 仍然缺依赖就直说缺什么，而不是抛一串 ImportError。
+if ! python -c "import torch" >/dev/null 2>&1; then
+  if [ -f ./env.sh ]; then
+    # shellcheck disable=SC1091
+    source ./env.sh >/dev/null 2>&1 || true
+  fi
+fi
+if ! python -c "import torch" >/dev/null 2>&1; then
+  echo " 缺少运行环境：python 无法 import torch"
+  echo " 请先激活环境（本机：source ~/motion-work/env.sh），或用 HM_DEPS/HM_BLENDER 指向依赖目录"
+  exit 2
+fi
+
 SENTENCE="${1:-}"
 if [ "$SENTENCE" = "--check" ]; then
   shift || true
