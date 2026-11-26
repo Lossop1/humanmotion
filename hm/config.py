@@ -45,7 +45,9 @@ MODEL_MOTIONLCM = MODELS / "Motius-MotionLCM"
 MODEL_EVALUATOR = MODELS / "Motius-Evaluator-HumanML3D"
 
 # 输出
-OUT_ROOT = Path(os.environ.get("HM_OUT", str(ROOT / "runs"))).expanduser()
+# 统一输出根：主链写 outputs/，这里必须同源。
+# 历史遗留：默认曾是 runs/，导致 job.py 写 outputs/、config.OUT_ROOT 指 runs/ 的双根目录。
+OUT_ROOT = Path(os.environ.get("HM_OUT", str(ROOT / "outputs"))).expanduser()
 
 # 动作参数
 FPS = 20

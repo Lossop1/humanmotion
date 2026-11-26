@@ -24,7 +24,16 @@ from hm import config, fit as fitmod
 from hm import job as jobmod
 from hm.jsonio import load_json
 
-FACES_SRC = config.OUT_ROOT / "R01-wave-turn-walk" / "faces.npy"
+def _faces_src():
+    """面部网格资源：优先当前输出根，其次历史的 runs/，都没有就返回不存在的路径。"""
+    for base in (config.OUT_ROOT, config.ROOT / "runs", config.ROOT / "outputs"):
+        p = base / "R01-wave-turn-walk" / "faces.npy"
+        if p.exists():
+            return p
+    return config.OUT_ROOT / "R01-wave-turn-walk" / "faces.npy"
+
+
+FACES_SRC = _faces_src()
 BONES = jobmod.BONES
 EXTREME_GAP_DEG = 90.0     # 超过这个姿态差，交界标记为极端，但仍走默认简单过渡
 DEFAULT_TRANSITION = 10    # 简单过渡的默认帧数（数据算出的 N 与它取较接近的那个）
