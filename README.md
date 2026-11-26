@@ -66,10 +66,29 @@ python -m hm.main --batch sentences.txt                      # 批量，每行�
 python -m hm.main --check                                    # 冒烟：三句各跑一遍
 ```
 
-出口码：`0` 出片且几何通过；`1` 出片但有问题（有段被丢弃或几何不过）；`2` 没出片。
+出口码：`0` 出片且几何通过、没有被判可疑或近似代替的段；`1` 出片但有可疑段、近似代替的段或几何不过；`2` 没出片（做不了，或所有段都没通过检查）。
 
-每个任务写到 `runs/<job-id>/`：`final.mp4`、`final_cropped.mp4`、`final_captioned.mp4`、
-`分镜.png`、`semantics.json`。
+每个任务写到 `outputs/<job-id>/`：
+
+```
+render/final.mp4             原始渲染（1080 方形）
+render/final_cropped.mp4     裁到人物（720）
+render/final_captioned.mp4   字幕 + 验证角标（看这个）
+分镜.png                     每段一格，标题前带状态：OK 通过 / ? 未验证 / X 可疑
+semantics.json               逐段语义状态与原因
+storyboard.json              分镜与选择记录（prompt / source / 候选 / 选中项）
+run.log                      逐步日志
+```
+
+不知从哪看起时，用一键演示脚本：
+
+```bash
+bash tools/demo.sh "一个人先向前走，然后转身，最后挥手告别"
+```
+
+它会跑一句、列出四件产物、打印每段语义状态与交界结论，并按退出码给出人可读的判定。
+
+> 注：`runs/` 是早期实现的输出目录，`legacy/render.py` 与 `finish_job` 里取面部资源仍指向它；主链一律写 `outputs/`。这个双根目录是已知技术债，见 `docs/闭环清单.md` 2.5。
 
 ## 常用环境变量
 
