@@ -131,6 +131,7 @@ for _it in range(14):
         break
     dist = dist * (frac / TARGET_FRAC)
 
+_DIST_BASE = dist
 # 再按「整段轨迹」扩一次取景：人走远时不能走出画面。
 # 只按某一帧取景的话，实测「原地踏步→向前走三步」最后只剩影子在画面里。
 eye = Vector((_cx + math.sin(az) * dist, _cy - math.cos(az) * dist, _cz + height * 0.30))
@@ -147,6 +148,10 @@ for _it in range(8):
     if dev < 0.40:
         break
     dist = dist * (dev / 0.40)
+    # 上限：最多比「按身高取景」远 30%，否则人物被缩成小人（实测 3% 画面高）
+    if dist > _DIST_BASE * 1.30:
+        dist = _DIST_BASE * 1.30
+        break
     eye = Vector((_cx + math.sin(az) * dist, _cy - math.cos(az) * dist, _cz + height * 0.30))
     cam.location = eye
     cam.rotation_euler = (aim - eye).to_track_quat("-Z", "Y").to_euler()

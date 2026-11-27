@@ -76,7 +76,7 @@ def measure_bbox_motion(path, samples=24, thr=10):
     return (int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max()))
 
 
-def crop_square(job_id, out_name="final_cropped.mp4", out_size=720, margin=1.38):
+def crop_square(job_id, out_name="final_cropped.mp4", out_size=720, margin=1.15):
     job = ROOT / job_id
     src = job / "render" / "final.mp4"
     (l, t, r, b), (w, h) = measure_bbox(src)
@@ -85,7 +85,7 @@ def crop_square(job_id, out_name="final_cropped.mp4", out_size=720, margin=1.38)
     if (r - l) > 0.85 * w or (b - t) > 0.85 * h:
         vf_skip = "scale=%d:%d:flags=lanczos" % (out_size, out_size)
         subprocess.run([_ffmpeg(), "-y", "-i", str(src), "-vf", vf_skip,
-                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20",
+                        "-c:v", "libx264", "-preset", "slow", "-pix_fmt", "yuv420p", "-crf", "16",
                         str(job / "render" / out_name)], check=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return job / "render" / out_name
