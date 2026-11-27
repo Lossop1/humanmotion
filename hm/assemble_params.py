@@ -294,20 +294,9 @@ def build(job, sb, verbose=True):
 
     J, V = joints_of_params(params)
 
-    # 网格层钉脚：踝级度量低估 3–4 倍（实测踝 2–6、网格 8–13 毫米/帧），
-    # 使用者看到的「腿在平移」是这一层。先算一次顶点，量出脚部漂移，
-    # 再从参数根平移里扣掉，然后重算顶点（只改根轨迹、不改关节角）。
-    try:
-        from hm import contact as _contact
-        _before = _contact.mesh_foot_slide(V)
-        params2, _pinm = _contact.pin_mesh(V, params)
-        if _pinm.get("fixed_frames"):
-            params = params2
-            J, V = joints_of_params(params)
-            job.log("网格钉脚：滑动 %.0f → %.0f mm/帧（修正 %d 帧，扣掉 %.2f 米）"
-                    % (_before, _contact.mesh_foot_slide(V), _pinm["fixed_frames"], _pinm["fixed_m"]))
-    except Exception as _e:
-        job.log("网格钉脚跳过：%s" % str(_e)[:60])
+    # 网格层钉脚已撤回：独立复核发现它压平的正是它自己量的量（自证），
+    # 且并集质心在换脚帧会给出 3 厘米/帧的横向猛拽（实测换脚帧根速 1.15–1.46 m/s）。
+    # 详见 docs/证据度量.md §49。保留 contact.pin_mesh 供离线实验，不在主链调用。
 
     # 贴地校正：按「网格最低点」而不是关节最低点对齐地面。
     # 实测：按关节对齐时皮肤比关节低 2–5 厘米，每千帧有 768 帧顶点在地面下。

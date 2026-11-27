@@ -152,6 +152,21 @@ for _it in range(8):
     cam.rotation_euler = (aim - eye).to_track_quat("-Z", "Y").to_euler()
     bpy.context.view_layer.update()
 
+# 轨迹扩取景会把相机拉远，实测因此把人物缩到画面高 3%（裁切后只有 71 像素 → 糊）。
+# 这里做一次「人物大小」的下限保护：投影占比低于 45% 就把距离收回来。
+TARGET_MIN_FRAC = 0.60
+for _it in range(6):
+    bpy.context.view_layer.update()
+    _ph = world_to_camera_view(scn, cam, Vector((_cx, _cy, _cz + aim_dz + body_h * 0.5)))
+    _pl = world_to_camera_view(scn, cam, Vector((_cx, _cy, _cz + aim_dz - body_h * 0.5)))
+    _fr = abs(_ph.y - _pl.y)
+    if _fr >= TARGET_MIN_FRAC or _fr < 1e-6:
+        break
+    dist = dist * (_fr / TARGET_MIN_FRAC)
+    eye = Vector((_cx + math.sin(az) * dist, _cy - math.cos(az) * dist, _cz + height * 0.30))
+    cam.location = eye
+    cam.rotation_euler = (aim - eye).to_track_quat("-Z", "Y").to_euler()
+
 # 距离定了再逐帧插关键帧（固定机位，位置都一样）
 for i in range(T):
     offx, offy = math.sin(az) * dist, -math.cos(az) * dist
@@ -218,6 +233,11 @@ if MODE == "range":
     scn.render.image_settings.file_format = "FFMPEG"
     scn.render.ffmpeg.format = "MPEG4"
     scn.render.ffmpeg.codec = "H264"
+    try:
+        scn.render.ffmpeg.constant_rate_factor = "PERC_LOSSLESS"
+        scn.render.ffmpeg.ffmpeg_preset = "GOOD"
+    except Exception:
+        pass
     scn.render.filepath = str(DST / ("range_%d_%d.mp4" % (scn.frame_start, scn.frame_end)))
     print("  渲染帧 %d-%d -> %s" % (scn.frame_start, scn.frame_end, scn.render.filepath))
     bpy.ops.render.render(animation=True)
@@ -225,6 +245,14 @@ elif MODE != "still":
     scn.render.image_settings.file_format = "FFMPEG"
     scn.render.ffmpeg.format = "MPEG4"
     scn.render.ffmpeg.codec = "H264"
+    # 画质：Blender 默认 CRF 偏低，实测 720p、94 帧只有 105 KB（约 90 kbps），
+    # 使用者反复判「分辨率崩溃」就是这一步把画面压糊了。这里显式指定高质量。
+    try:
+        scn.render.ffmpeg.constant_rate_factor = "PERC_LOSSLESS"
+        scn.render.ffmpeg.ffmpeg_preset = "GOOD"
+        scn.render.ffmpeg.audio_codec = "NONE"
+    except Exception:
+        pass
     scn.render.filepath = str(DST / "out.mp4")
     bpy.ops.render.render(animation=True)
 else:

@@ -13,7 +13,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent / "outputs"
+# 这个模块原在仓库根；搬进 hm/ 后 parent 是包目录，仓库根要往上两级
+ROOT = Path(__file__).resolve().parents[1] / "outputs"
 
 
 def _ffmpeg():
@@ -90,7 +91,9 @@ def crop_square(job_id, out_name="final_cropped.mp4", out_size=720, margin=1.38)
         return job / "render" / out_name
     ch, cw = b - t, r - l
     side = int(max(ch, cw) * margin)
-    # 不要放大：裁出来的框比输出尺寸小时，放大只会变糊（实测使用者判「分辨率崩溃」）
+    # 永不放大：① side 不能超过源画面（否则裁切区域比源还大，等于放大）
+    #          ② 输出尺寸不能超过 side（否则同样是把小图拉大）
+    side = min(side, min(w, h))
     if side < out_size:
         out_size = max(240, side)
     cx, cy = (l + r) // 2, (t + b) // 2

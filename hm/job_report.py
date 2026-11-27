@@ -13,7 +13,8 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parent / "outputs"
+# 这个模块原在仓库根；搬进 hm/ 后 parent 是包目录，仓库根要往上两级
+ROOT = Path(__file__).resolve().parents[1] / "outputs"
 
 
 def report(job_id):
