@@ -239,10 +239,20 @@ def build(job, sb, verbose=True):
     J, V = joints_of_params(params)
 
     # 贴地校正：按「网格最低点」而不是关节最低点对齐地面。
-    # 实测（逐帧网格法）：按关节对齐时皮肤比关节低 2–5 厘米，
-    # 30 个任务里每千帧有 768 帧有顶点低于地面——不是动作错，是对齐口径错了。
-    _ground0 = float((sb.get("terrain") or {}).get("start_y") or 0.0)
-    _dy = _ground0 - float(np.min(V[:, :, 1]))
+    # 实测：按关节对齐时皮肤比关节低 2–5 厘米，每千帧有 768 帧顶点在地面下。
+    # 但只能用第一段对齐：若用全局最低点，会把后面台阶段整体拉低/抬高，
+    # 破坏逐段地形（实测台阶句 0.15/0.30 被拉成 0.13/0.36）。
+    _terrain0 = sb.get("terrain") or {}
+    _prof0 = {int(p.get("at_segment", 0)): float(p.get("y", 0.0))
+              for p in (_terrain0.get("profile") or []) if isinstance(p, dict)}
+    _first_sid = 1
+    try:
+        _first_sid = int(str(bounds[0].get("segment_id", "seg_001")).split("_")[-1])
+    except (ValueError, IndexError):
+        pass
+    _ground_first = _prof0.get(_first_sid, float(_terrain0.get("start_y") or 0.0))
+    _n_first = int(bounds[0].get("frames") or 0) or len(V)
+    _dy = _ground_first - float(np.min(V[:_n_first, :, 1]))
     if abs(_dy) > 1e-4:
         params = np.array(params, dtype=np.float64, copy=True)
         params[:, TRANSL[0] + 1] += _dy

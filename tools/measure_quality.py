@@ -54,7 +54,14 @@ def main():
     for d in jobs(a.glob):
         J = np.load(d / "assembled" / "joints22.npy")
         g = ground_of(d)
-        gp = QM.ground_penetration(J, g)
+        bj_p2 = d / "assembled" / "bounds.json"
+        if bj_p2.exists():
+            _bj = json.loads(bj_p2.read_text(encoding="utf-8"))
+            _sb = json.loads((d / "storyboard.json").read_text(encoding="utf-8")) if (d / "storyboard.json").exists() else {}
+            _gp = QM.ground_profile(_bj.get("segments"), _sb.get("terrain"), total_frames=len(J))
+            gp = QM.ground_penetration_profile(J, _gp)
+        else:
+            gp = QM.ground_penetration(J, g)
         fs = QM.foot_slide(J)
         ar = QM.accel_ratio(J)
         bj_p = d / "assembled" / "bounds.json"

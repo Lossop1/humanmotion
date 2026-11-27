@@ -78,6 +78,42 @@ def ground_penetration(J, ground=0.0):
             "mean_depth_m": round(float(depth[depth > 1e-3].mean()) if hit else 0.0, 4)}
 
 
+def ground_profile(bounds, terrain, total_frames=None):
+    """逐帧地面高度：按段的 start_y 与 terrain.profile 铺开。
+
+    为什么需要：装配后按「全局最低点」对齐地面会让穿地指标恒为 0（轮25 实测 0.0/千帧），
+    那等于没测。真正的穿地要相对「这一段应该在的地面高度」来算，
+    台阶/上下坡的错位才能被看见。
+    """
+    prof = {int(p.get("at_segment", 0)): float(p.get("y", 0.0))
+            for p in ((terrain or {}).get("profile") or []) if isinstance(p, dict)}
+    start = float((terrain or {}).get("start_y") or 0.0)
+    out = []
+    for seg in bounds or []:
+        try:
+            sid = int(str(seg.get("segment_id", "")).split("_")[-1])
+        except ValueError:
+            sid = 1
+        g = prof.get(sid, start)
+        out.extend([g] * int(seg.get("frames") or 0))
+    if total_frames and len(out) < total_frames:
+        out.extend([out[-1] if out else start] * (total_frames - len(out)))
+    return np.asarray(out, dtype=np.float64)
+
+
+def ground_penetration_profile(J, ground):
+    """相对逐帧地面高度的穿地统计。ground 可以是标量或与 J 等长的数组。"""
+    g = np.asarray(ground, dtype=np.float64)
+    if g.ndim == 0:
+        g = np.full(len(J), float(g))
+    low = np.min(J[:, :, 1], axis=1) - g[: len(J)]
+    depth = np.maximum(0.0, -low)
+    hit = int(np.sum(depth > 1e-3))
+    return {"frames": int(len(J)), "frames_below": hit,
+            "max_depth_m": round(float(depth.max()) if len(depth) else 0.0, 4),
+            "mean_depth_m": round(float(depth[depth > 1e-3].mean()) if hit else 0.0, 4)}
+
+
 def foot_slide(J, fps=20.0, contact_h=0.06):
     """接触相位内的脚部水平位移（毫米/帧）。
 
