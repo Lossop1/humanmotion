@@ -160,3 +160,25 @@ def canonical(term, declared):
         if any(k in text for k in KEYS.get(name, ())):
             return name
     return text
+
+
+# 通常用法对应的英文写法：规划自己写什么不管，执行层统一按这个来，
+# 否则同一句话两次跑会给出「转身走回」和「后退」两种解释（实测 planner 会漂）。
+USUAL_PROMPT = {
+    "走回来": "a person turns around and walks back",
+    "跑回来": "a person turns around and runs back",
+    "离开": "a person walks forward away",
+    "回到原位": "a person turns around and walks back",
+    "绕一圈": "a person walks in a circle",
+}
+
+
+def has_hint(text, term=None):
+    """原句里有没有明确修饰（倒退/侧着…），有才偏离通常用法。"""
+    s = str(text or "")
+    terms = [term] if term else [w for w, _ in lookup(s)]
+    for w in terms:
+        for name, _h, _r in (AMBIGUOUS.get(w) or []):
+            if any(h in s for h in HINTS.get(name, ())):
+                return True
+    return False

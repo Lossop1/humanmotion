@@ -289,6 +289,20 @@ def step_a06(job, sb):
                                 % (seg["segment_id"], [w for w, _ in _hits]))
         except Exception:
             pass
+        # 多义动作：没有明确修饰时，执行层统一按「通常用法」的写法生成，
+        # 不跟随规划的随机选择（实测同一句两次跑会给出「转身走回」和「后退」两种）
+        try:
+            from hm import ambiguity as _amb2
+            _hit_terms = [w for w, _ in _amb2.lookup(seg.get("source_text") or "")]
+            if _hit_terms and not _amb2.has_hint(seg.get("source_text") or "", _hit_terms[0]):
+                _up = _amb2.USUAL_PROMPT.get(_hit_terms[0])
+                if _up and _up != final:
+                    job.log("按通常用法改写提示词：%s %r → %r"
+                            % (seg["segment_id"], final[:34], _up[:34]))
+                    final = _up
+                    version = (version or "") + "+usual_usage"
+        except Exception:
+            pass
         seg["text_gen_final"] = final
         seg["template_version"] = version
         # 字幕一致性：原文提到、提示词里没有的动作，显式记下来

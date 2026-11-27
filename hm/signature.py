@@ -21,6 +21,9 @@ RULES = [
     (r"\b(walks?|walking|runs?|running|sprints?|jogs?|steps?)\b\s+"
      r"(forward|backward|to the left|to the right)", "disp_m", 0.6, "应走出去", "min"),
     (r"turns? around|turning around", "yaw_deg", 45.0, "应转向", "min"),
+    # 换脚转身写法 steps around to face the other way 测得支撑脚滑动 0 mm/s，
+    # 但有一半样本几乎不转（yaw 7 度）→ 判据保留，作为「如果用了这个写法就要真转」的守卫
+    (r"steps? around to face", "yaw_deg", 90.0, "应转过来面对另一边", "min"),
     # 阈值取实测分离点：momask 前倾中位 2.0、最大 7.6、后退 ≤-0.01；
     #                     mdm   前倾中位 10.2、后退中位 0.39
     (r"turns? around|turning around", "lean_median", 9.0, "转身应站直", "max"),

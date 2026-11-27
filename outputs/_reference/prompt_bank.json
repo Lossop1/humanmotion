@@ -595,9 +595,10 @@
     }
    }
   ],
-  "best": "a person turns around",
+  "best": "a person turns around in place slowly",
   "best_rate": 1.0,
-  "tested_at": "2026-11-19 18:26:17"
+  "tested_at": "2026-11-27 21:11:29",
+  "note": "换脚转身写法 steps around to face the other way 实测不稳：支撑脚滑动 0 mm/s 但有一半样本几乎不转（yaw 7 度）→ 不可靠，回退到 turns around in place slowly（能转但脚会滑，使用者判「像站在转盘上」，属模型限制）"
  },
  "turn_left": {
   "action_zh": "向左转",
