@@ -198,7 +198,8 @@ def segment_candidates(job, sb):
                 cands.append(n)
         # 平滑优先：同一段里若有骨骼方向不抖的候选，就别选会扭一下的。
         # 锚点：人工标定看到的那次扭曲，单帧骨骼方向变化远超常规（docs/证据度量 §9.2）
-        if len(cands) > 1:
+        import os as _os_sm
+        if len(cands) > 1 and _os_sm.environ.get("HM_SMOOTH_FILTER", "0") == "1":
             from hm import quality_metrics as _QM
             spikes = {}
             for n in cands:
