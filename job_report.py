@@ -43,7 +43,9 @@ def report(job_id):
         start, end = t, t + fr
         lines.append({
             "i": i + 1, "sid": s["segment_id"], "src": s.get("source_text") or "",
-            "label": s.get("action") or "", "prompt": s.get("text_gen") or "",
+            "label": (s.get("action") or "") + (
+            "（缺：%s）" % "、".join(s["missing_actions"]) if s.get("missing_actions") else ""),
+        "prompt": s.get("text_gen") or "",
             "frames": fr, "start_s": round(start / 20, 2), "end_s": round(end / 20, 2),
         })
         marks.append((i + 1, s.get("action") or "", int(start + fr // 2)))

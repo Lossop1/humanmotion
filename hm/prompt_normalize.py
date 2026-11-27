@@ -45,3 +45,38 @@ def normalize(prompt):
                 return new, why
             return text, None
     return text, None
+
+
+# 中文动作 → 提示词里应出现的关键词（用于检查「字幕说做了、提示词里没有」）
+ACTION_LEX = [
+    ("跑", ("run", "runs", "running", "sprint", "jog")),
+    ("走", ("walk", "walks", "walking", "step", "steps", "march")),
+    ("挥手", ("wave", "waves", "waving")),
+    ("举手", ("raise", "raises", "raising", "lift", "lifts")),
+    ("出拳", ("punch", "punches", "punching")),
+    ("踢", ("kick", "kicks", "kicking")),
+    ("跳", ("jump", "jumps", "jumping", "hop", "hops")),
+    ("转身", ("turn", "turns", "turning")),
+    ("停下", ("stop", "stops", "stands still", "slow")),
+    ("坐", ("sit", "sits", "sitting", "seat")),
+    ("蹲", ("crouch", "squat", "kneel")),
+    ("弯腰", ("bend", "bends", "bending", "bow", "bowing")),
+    ("推", ("push", "pushes", "pushing")),
+    ("鞠躬", ("bow", "bowing")),
+]
+
+
+def missing_actions(source_text, prompt):
+    """source 里提到、但 prompt 里没有对应动作词的项。
+
+    实测 clip_19「一边走一边挥手」：prompt 只有 walks forward，挥手整段丢了；
+    clip_12「弯腰捡起地上的东西」：prompt 只有 bend，捡起没有。
+    这类段要继续生成也可以，但字幕必须标出「缺」，不能假装做了。
+    """
+    src = str(source_text or "")
+    en = str(prompt or "").lower()
+    missing = []
+    for zh, words in ACTION_LEX:
+        if zh in src and not any(w in en for w in words):
+            missing.append(zh)
+    return missing

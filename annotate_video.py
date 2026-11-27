@@ -56,7 +56,14 @@ def annotate(job_id, out_name="final_captioned.mp4", crf=16):
         owner += [i] * b["frames"]
         if i < len(junc):
             owner += [i] * junc[i]["transition_frames"]
-    labels = [(str(i + 1), (s.get("action") or "")[:8]) for i, s in enumerate(segs)]
+    def _cap(seg):
+        """字幕 = 段落标签；原文提到但提示词没做的动作要标出来（缺：X）。"""
+        name = (seg.get("action") or "")[:10]
+        miss = seg.get("missing_actions") or []
+        if miss:
+            name += "（缺：%s）" % "、".join(miss)
+        return name
+    labels = [(str(i + 1), _cap(s)) for i, s in enumerate(segs)]
 
     # 验证状态角标：只看视频的人也要知道这一段有没有被校准量查过
     mark_of = {}

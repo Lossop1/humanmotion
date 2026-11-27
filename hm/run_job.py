@@ -247,7 +247,9 @@ def step_a06(job, sb):
                 return {w for w in re.findall(r"[a-z]+", y)
                         if w in {"forward", "backward", "left", "right", "back", "around", "circle"}}
 
-            _subset = bool(tested) and _tok(tested) <= _tok(prompt)
+            # 必须「内容词完全一致」才允许替换：原先只要求 tested ⊆ prompt，
+            # 结果实测把 "walks forward and waves hello" 换成了 "walks forward"——挥手整段丢了。
+            _subset = bool(tested) and _tok(tested) == _tok(prompt)
             # 方向必须一致：实测「walks backward」被换成能力表里的「walks forward」，
             # 之后装配再整体转 180°，画面上就是「普通前进」——看起来完全不后退。
             _dir_ok = bool(tested) and _dirs(tested) == _dirs(prompt)
@@ -259,6 +261,14 @@ def step_a06(job, sb):
                         % (seg["segment_id"], tested, prompt))
         seg["text_gen_final"] = final
         seg["template_version"] = version
+        # 字幕一致性：原文提到、提示词里没有的动作，显式记下来
+        try:
+            from hm.prompt_normalize import missing_actions as _miss
+            _m = _miss(seg.get("source_text") or "", final)
+            if _m:
+                seg["missing_actions"] = _m
+        except Exception:
+            pass
     # 第二道：提示词库。planner 的措辞不如库里测过的写法稳时，用库里的。
     from pathlib import Path as _P
     _bp = _P(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
@@ -587,6 +597,11 @@ def merge_short_segments(job, sb, limit_frames=56):
                 # 原文动作若已判「做不出来」，合并后仍要记住：这是近似代替，不是原意
                 if a.get("support_status") == "unsupported" or b.get("support_status") == "unsupported":
                     merged["approx_from_unsupported"] = True
+                # 合并段的字幕要同时写两个动作，否则字幕会只报一个（实测 clip_04）
+                _la = str(a.get("action") or "").strip()
+                _lb = str(b.get("action") or "").strip()
+                if _la and _lb:
+                    merged["action"] = "%s → %s" % (_la, _lb)
                 merged["support_status"] = "unverified"
                 merged["support_reason"] = "合并段，需重新判定"
                 if not merged.get("route"):
