@@ -120,7 +120,9 @@ def build(job, sb, verbose=True):
     _terrain = sb.get("terrain") or {}
     _profile = {int(p.get("at_segment", 0)): float(p.get("y", 0.0))
                 for p in (_terrain.get("profile") or []) if isinstance(p, dict)}
-    _g_forward = None          # 世界"前方"：第一段有位移的段的自然行进方向
+    # 世界前方固定为 0（人面朝 +z）：这样每段的目标行进方向是绝对角，
+    # 不会因为「第一段自然方向」而自我满足（实测「向右走」曾因此只拿到 60°）。
+    _g_forward = 0.0
     for _idx, (seg, n) in enumerate(chosen, start=1):
         J = np.load(job.dir / "segments" / seg["segment_id"] /
                     ("candidate_%d" % n) / "joints22.npy")
@@ -132,16 +134,8 @@ def build(job, sb, verbose=True):
         else:
             placed, dyaw = FJ.align_pair(prev, J)
 
-        # 朝向执行：把本段的位移方向转到请求的世界方向
-        if _g_forward is None:
-            _phi0, _d0 = CTL._disp_dir(placed)
-            if _phi0 is not None:
-                # 世界前方不能直接取第一段的自然方向，否则第一段请求 backward 时
-                # 目标 = 自己+180°，会被自己转 180°，把正确的后退改成前进。
-                _req0 = str(seg.get("facing") or seg.get("direction") or "").strip().lower()
-                _g_forward = _phi0 - CTL.DIR_ANGLE[_req0] if _req0 in CTL.DIR_ANGLE else _phi0
         placed, _face = CTL.enforce_facing(placed, seg.get("facing") or seg.get("direction"),
-                                       _g_forward if _g_forward is not None else 0.0)
+                                       _g_forward)
         # 地形执行：把本段整体对齐到规划给出的地面高度
         # 地形按「原段号」取高度：合并会让段序号错位，不能用循环下标
         try:
