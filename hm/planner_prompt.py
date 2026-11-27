@@ -119,6 +119,12 @@ frames
 
 过渡
 12 每两个相邻段给一段过渡：duration_s 0.15–1.20，ease 取 linear / ease_in_out / ease_out。
+
+地形
+13 只有句子里出现高度变化才填 terrain，否则 start_y=0 且 profile 各段 y=0。
+14 「跳下/跃下/从高处」→ start_y 取正数（一级台阶 0.15，台面 0.5，高处 1.2）；
+   「上台阶/上楼」→ 后续段 profile 的 y 逐级加 0.15；「下台阶/下楼」→ 逐级减 0.15。
+15 profile 用 [{at_segment: 段号从 1 开始, y: 该段开始时的地面高度}]，段号必须与 segments 对齐。
 </rules>
 
 <self_check>

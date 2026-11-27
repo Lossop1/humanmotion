@@ -17,6 +17,7 @@ from scipy.spatial.transform import Rotation as R
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from hm import control as CTL
 from hm import fit as FM, finish_job as FJ, job as jobmod
 
 FM._patch_paths()
@@ -116,7 +117,11 @@ def build(job, sb, verbose=True):
 
     pieces, seg_params, bounds = [], [], []
     prev = None
-    for seg, n in chosen:
+    _terrain = sb.get("terrain") or {}
+    _profile = {int(p.get("at_segment", 0)): float(p.get("y", 0.0))
+                for p in (_terrain.get("profile") or []) if isinstance(p, dict)}
+    _g_forward = None          # 世界"前方"：第一段有位移的段的自然行进方向
+    for _idx, (seg, n) in enumerate(chosen, start=1):
         J = np.load(job.dir / "segments" / seg["segment_id"] /
                     ("candidate_%d" % n) / "joints22.npy")
         _k = int(seg.get("trim_tail") or 0)
@@ -126,6 +131,24 @@ def build(job, sb, verbose=True):
             placed, dyaw = J, 0.0
         else:
             placed, dyaw = FJ.align_pair(prev, J)
+
+        # 朝向执行：把本段的位移方向转到请求的世界方向
+        if _g_forward is None:
+            _phi0, _d0 = CTL._disp_dir(placed)
+            if _phi0 is not None:
+                _g_forward = _phi0
+        placed, _face = CTL.enforce_facing(placed, seg.get("facing") or seg.get("direction"),
+                                       _g_forward if _g_forward is not None else 0.0)
+        # 地形执行：把本段整体对齐到规划给出的地面高度
+        # 地形按「原段号」取高度：合并会让段序号错位，不能用循环下标
+        try:
+            _sid = int(str(seg["segment_id"]).split("_")[-1])
+        except (ValueError, KeyError):
+            _sid = _idx
+        _ground = _profile.get(_sid, _terrain.get("start_y"))
+        placed, _dy = CTL.apply_terrain(placed, _ground)
+        # 速度执行：slow/fast 用帧数伸缩实现（后端没有速度接口）
+        placed, _spd = CTL.apply_speed(placed, seg.get("speed"))
         if verbose:
             print("    拟合 %s ..." % seg["segment_id"], flush=True)
         _m = __import__("os").environ.get("HM_FIT_METHOD", "opt")
@@ -148,6 +171,8 @@ def build(job, sb, verbose=True):
         seg_params.append(P)
         bounds.append({"segment_id": seg["segment_id"], "candidate": "cand_%02d" % n,
                        "frames": int(len(placed)), "align_yaw_deg": round(dyaw, 2),
+                       "facing": _face, "terrain_dy_m": _dy, "ground_y": _ground,
+                       "speed": _spd,
                        "stage": "retimed"})
         prev = placed
         seg["selected"] = "cand_%02d" % n
