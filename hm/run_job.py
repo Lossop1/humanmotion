@@ -259,6 +259,12 @@ def step_a06(job, sb):
                 reused += 1
                 job.log("A06 %s 采用能力表测过的提示词：%r（planner 原为 %r）"
                         % (seg["segment_id"], tested, prompt))
+        # 速度词进提示词：实测「慢慢转身」并不慢，因为只做了帧数伸缩
+        try:
+            from hm.prompt_normalize import apply_speed_word as _spw
+            final = _spw(final, seg.get("speed"))
+        except Exception:
+            pass
         seg["text_gen_final"] = final
         seg["template_version"] = version
         # 字幕一致性：原文提到、提示词里没有的动作，显式记下来

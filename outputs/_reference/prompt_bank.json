@@ -1348,5 +1348,43 @@
   "best": "a person squats down and stands up",
   "best_rate": 1.0,
   "tested_at": "2026-11-19 18:26:26"
+ },
+ "march": {
+  "action_zh": "原地踏步",
+  "phrasings": [
+   {
+    "text": "a person marches in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person steps in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
+    "text": "a person walks in place",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person marches in place",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-27 15:46:48"
  }
 }

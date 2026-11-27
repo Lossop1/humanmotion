@@ -125,3 +125,11 @@ def test_junction_frames_matches_the_s20_regression():
 def test_junction_frames_floor_and_fast_motion():
     assert AP.junction_frames(1.0, 50.0) >= 2        # 姿态差很小也不少于 2 帧
     assert AP.junction_frames(90.0, 30.0) <= 120      # 动作很快时过渡不应无限长
+
+
+def test_speed_word_added_once():
+    from hm.prompt_normalize import apply_speed_word
+    assert apply_speed_word("a person turns around in place", "slow") == \
+        "a person turns around in place slowly"
+    assert apply_speed_word("a person runs forward fast", "fast") == "a person runs forward fast"
+    assert apply_speed_word("a person walks forward", "normal") == "a person walks forward"

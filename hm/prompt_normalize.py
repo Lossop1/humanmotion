@@ -95,3 +95,24 @@ def describe_zh(prompt):
         if any(w in en for w in words):
             out.append(zh)
     return out
+
+
+SPEED_WORD = {"slow": "slowly", "fast": "quickly"}
+
+
+def apply_speed_word(prompt, speed):
+    """把 slow/fast 写进提示词（slowly / quickly）。
+
+    实测问题：使用者说「慢慢转身」的转身并不慢。根因是速度只做了帧数伸缩，
+    提示词里没有 slowly，模型就按自己节奏生成。这里只加副词，不动动作词。
+    """
+    text = str(prompt or "").strip()
+    word = SPEED_WORD.get(str(speed or "").strip().lower())
+    if not word or not text:
+        return text
+    low = text.lower()
+    # 已有任何速度词就不再添加，否则会出现 "runs forward fast quickly"
+    if any(w in low for w in ("slowly", "quickly", "slow", "fast")):
+        return text
+    # 已经以 in place / around 结尾的，副词放句末更自然
+    return "%s %s" % (text, word)
