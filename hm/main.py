@@ -231,7 +231,7 @@ def run_one(sentence, job_id=None, k=6):
         try:
             import contextlib as _cl
             import io as _io2
-            import job_report as _jr
+            from hm import job_report as _jr
             with _cl.redirect_stdout(_io2.StringIO()):
                 _jr.report(str(job_dir))
         except Exception:

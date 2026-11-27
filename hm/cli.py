@@ -34,9 +34,10 @@ def _run_module(mod, argv):
     return subprocess.call([sys.executable, "-m", mod] + argv, cwd=str(ROOT))
 
 
-def _run_tool(path, argv):
+def _run_op(name, argv):
+    """跑 hm.ops.<name>（原 tools/*.py，已收进包里，不再对外暴露脚本路径）。"""
     import subprocess
-    return subprocess.call([sys.executable, str(ROOT / "tools" / path)] + argv, cwd=str(ROOT))
+    return subprocess.call([sys.executable, "-m", "hm.ops." + name] + argv, cwd=str(ROOT))
 
 
 def main():
@@ -92,18 +93,18 @@ def main():
         return subprocess.call([sys.executable, "eval_big.py"] + argv, cwd=str(ROOT))
     if a.cmd == "pack":
         if a.kind == "verify":
-            return _run_tool("make_verify_pack.py", ["--k", str(a.k)])
+            return _run_op("make_verify_pack", ["--k", str(a.k)])
         if a.kind == "open":
-            return _run_tool("make_open_pack.py", ["--k", str(a.k)])
-        return _run_tool("run_random_set.py", ["--n", str(a.n), "--seed", str(a.seed), "--k", str(a.k)])
+            return _run_op("make_open_pack", ["--k", str(a.k)])
+        return _run_op("run_random_set", ["--n", str(a.n), "--seed", str(a.seed), "--k", str(a.k)])
     if a.cmd == "measure":
         if a.kind == "quality":
-            return _run_tool("measure_quality.py", ["--job", a.job or ""])
+            return _run_op("measure_quality", ["--job", a.job or ""])
         if a.kind == "mesh":
-            return _run_tool("measure_mesh.py", ["--job", a.job or ""])
+            return _run_op("measure_mesh", ["--job", a.job or ""])
         if a.kind == "visual-jump":
-            return _run_tool("visual_jump_report.py", (["--dir", a.dir] if a.dir else []))
-        return _run_tool("coverage_report.py", [])
+            return _run_op("visual_jump_report", (["--dir", a.dir] if a.dir else []))
+        return _run_op("coverage_report", [])
     if a.cmd == "report":
         table = {"capability": "capability_report", "rules": "rule_report", "ledger": "make_ledger",
                  "test": "make_test_report", "semantic": "human_semantic_report"}
@@ -114,7 +115,7 @@ def main():
         argv = ["--verdicts", a.verdicts]
         if a.categories:
             argv += ["--categories", a.categories]
-        return _run_tool("score_judged.py", argv)
+        return _run_op("score_judged", argv)
     return 1
 
 

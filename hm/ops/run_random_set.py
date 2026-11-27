@@ -25,7 +25,7 @@ def main():
     ap.add_argument("--k", type=int, default=3)
     a = ap.parse_args()
     sys.path.insert(0, str(ROOT))
-    from tools.make_random_set import build
+    from hm.ops.make_random_set import build
 
     sents = build(a.n, a.seed)
     out = ROOT / "outputs" / "_random" / str(a.seed)

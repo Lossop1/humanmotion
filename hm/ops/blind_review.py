@@ -35,7 +35,7 @@ BATCHES = [("std", "r20", "big_s%02d_%s"), ("fresh", "r1", "frs_f%02d_%s")]
 
 
 def _sentences():
-    import eval_big
+    from hm import eval_big
     return {"std": eval_big.SENTENCES, "fresh": eval_big.sentences("fresh")}
 
 

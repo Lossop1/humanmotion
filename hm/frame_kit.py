@@ -9,9 +9,9 @@ from pathlib import Path
 
 
 def deliver(job, job_id):
-    import frame_crop
-    from job_report import report
-    from annotate_video import annotate
+    from hm import frame_crop
+    from hm.job_report import report
+    from hm.annotate_video import annotate
 
     # job_report 与 annotate_video 在工程根目录，按 job_id 找 outputs 目录
     crops = frame_crop.crop_square(job_id)

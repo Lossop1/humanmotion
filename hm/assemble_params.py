@@ -420,7 +420,7 @@ def run(job, sb):
     import os as _os2
     if _os2.environ.get("HM_DELIVER", "1") == "1":
         try:
-            import frame_kit
+            from hm import frame_kit
             frame_kit.deliver(job, job.job_id)
             job.log("A19 交付件：final_cropped.mp4、final_captioned.mp4、分镜.png")
         except Exception as e:
