@@ -237,3 +237,32 @@ def self_intersection(J):
             "hit_ratio": round(bad_frames / max(len(J), 1), 3),
             "max_depth_m": round(worst, 4),
             "pairs": dict(sorted(pairs_hit.items(), key=lambda kv: -kv[1])[:4])}
+
+
+def limb_reversal(J):
+    """肢体层「倒放感」候选量：摆动腿相对身体朝向的运动方向。
+
+    思路：正常走/跑时，摆动脚相对身体是向前送出去的；如果脚的相对位移朝后，
+    视觉上就像把走路倒放。返回 {frames, forward_ratio}：
+    forward_ratio = 摆动相位里「脚相对身体向前」的帧占比（正常应明显 >0.5）。
+    """
+    J = np.asarray(J, dtype=np.float64)
+    T = len(J)
+    if T < 6:
+        return {"frames": T, "forward_ratio": None}
+    hip = J[:, 2] - J[:, 1]                       # 左髋→右髋
+    body = np.stack([hip[:, 2], np.zeros(T), -hip[:, 0]], axis=1)
+    n = np.linalg.norm(body, axis=1, keepdims=True)
+    body = body / np.maximum(n, 1e-9)
+    ankle = np.stack([J[:, 7], J[:, 8]], axis=1)  # (T, 2, 3) 两脚
+    rel = ankle - J[:, 0:1, :]                    # 相对骨盆
+    v = np.diff(rel, axis=0)                      # (T-1, 2, 3)
+    fwd = (v * body[:-1, None, :]).sum(axis=2)    # (T-1, 2) 相对前进方向的速度
+    # 只统计「摆动相位」：脚相对骨盆速度较大的那些帧
+    speed = np.linalg.norm(v, axis=2)
+    thr = np.median(speed) + 1e-9
+    mask = speed > thr
+    if not mask.any():
+        return {"frames": T, "forward_ratio": None}
+    ratio = float((fwd[mask] > 0).mean())
+    return {"frames": T, "forward_ratio": round(ratio, 2)}
