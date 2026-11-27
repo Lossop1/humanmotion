@@ -595,8 +595,13 @@ def merge_short_segments(job, sb, limit_frames=56):
             _dir_b = str(b.get("facing") or "").strip().lower()
             _dir_conflict = bool(_dir_a and _dir_b and _dir_a != _dir_b
                                  and "in_place" not in (_dir_a, _dir_b))
-            if not _compound and not _dir_conflict and (fa <= limit_frames and fb <= limit_frames
-                                  or (fa + fb) <= 120):
+            # 原文里有明确先后顺序（然后/再/接着/最后）时不合并：
+            # 合并成一句 "walks forward and waves hello"，模型给了「先挥手再转身走」，
+            # 顺序丢了还多出动作（使用者实测 clip_04）。
+            _seq = any(w in (str(a.get("source_text") or "") + str(b.get("source_text") or ""))
+                       for w in ("然后", "再", "接着", "最后", "之后", "随后"))
+            if (not _compound and not _dir_conflict and not _seq
+                and (fa <= limit_frames and fb <= limit_frames or (fa + fb) <= 120)):
                 pa = (a.get("text_gen_final") or "").strip()
                 pb = (b.get("text_gen_final") or "").strip()
                 body_b = pb[len("a person "):] if pb.startswith("a person ") else pb

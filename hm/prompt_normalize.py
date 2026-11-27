@@ -50,7 +50,10 @@ def normalize(prompt):
 # 中文动作 → 提示词里应出现的关键词（用于检查「字幕说做了、提示词里没有」）
 ACTION_LEX = [
     ("跑", ("run", "runs", "running", "sprint", "jog")),
-    ("走", ("walk", "walks", "walking", "step", "steps", "march")),
+    # 顺序即优先级：踏步/侧移要排在「走」前面，否则描述里 step/march 会被当成走
+    ("踏步", ("march", "marches", "marching", "stomp", "stomps")),
+    ("侧移", ("sidestep", "sidesteps", "sidestepping")),
+    ("走", ("walk", "walks", "walking")),
     ("挥手", ("wave", "waves", "waving")),
     ("举手", ("raise", "raises", "raising", "lift", "lifts")),
     ("出拳", ("punch", "punches", "punching")),

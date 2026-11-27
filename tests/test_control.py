@@ -154,3 +154,10 @@ def test_sidestep_not_judged_as_walk():
     sig = {"disp_m": 0.3, "facing_travel_deg": 90.0, "knee_range": 15.0}
     ok, bad, _detail = signature.check("a person sidesteps to the left", sig)
     assert ok is not False, "侧移被判成「没走出去」：%s" % (bad,)
+
+
+def test_describe_zh_march_and_sidestep():
+    from hm.prompt_normalize import describe_zh
+    assert describe_zh("a person marches in place with high knees") == ["踏步"]
+    assert describe_zh("a person sidesteps to the left") == ["侧移"]
+    assert describe_zh("a person walks forward") == ["走"]
