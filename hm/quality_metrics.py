@@ -176,6 +176,26 @@ def junction_dynamics(J, junctions):
     return out
 
 
+def bone_turn_spike(J):
+    """单帧最大骨骼方向变化（度/帧）。
+
+    为什么要它：人工标定的扭曲（big_s08 第 263→264 帧）在参数空间是根关节一帧 113 度，
+    从关节上同样表现为骨骼方向突变；而这个量在选候选时可直接算，不需要先拟合。
+    """
+    from hm import job as jobmod
+    J = np.asarray(J, dtype=np.float64)
+    if len(J) < 3:
+        return 0.0
+    out = 0.0
+    for c, p_ in jobmod.BONES:
+        v = J[:, c] - J[:, p_]
+        n = np.linalg.norm(v, axis=1, keepdims=True)
+        v = v / np.maximum(n, 1e-9)
+        dot = np.clip((v[1:] * v[:-1]).sum(axis=1), -1.0, 1.0)
+        out = max(out, float(np.degrees(np.arccos(dot)).max()))
+    return round(out, 1)
+
+
 def rot_spike(params):
     """单帧最大关节转动（度/帧）。人工标定锚点：big_s08 在 13.7 秒被判「有扭曲」，
     对应第 274 帧转动 107.7 度/帧；同批 30 个任务里 >30 度的有 5 个、>60 度的 2 个。"""

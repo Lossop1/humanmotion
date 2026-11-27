@@ -167,12 +167,23 @@ def build(job, sb, verbose=True):
                 np.save(_tmp, np.asarray(P))
                 _cache.put_file("fit", _ck, "params.npy", _tmp)
         P = np.asarray(P, dtype=np.float64)
+        # 拟合翻转兜底：优化法在个别帧会把肢体翻过去（候选关节是平滑的，拟合后单帧转动 118 度）。
+        # 实测同句 HM_FIT_METHOD=ik 只有 22.5 度，所以「扭」的时候用解析 IK 重拟一遍取更平滑的。
+        _rs = __import__("hm.quality_metrics", fromlist=["rot_spike"]).rot_spike(P)
+        if _m != "ik" and _rs["max_deg"] > 30.0:
+            _, _P_ik = FM.fit(placed, method="ik", refine=0, iters=4)
+            _rs_ik = __import__("hm.quality_metrics", fromlist=["rot_spike"]).rot_spike(_P_ik)
+            if _rs_ik["max_deg"] < _rs["max_deg"]:
+                job.log("拟合兜底：%s 单帧转动 %.1f 度 → 改用解析 IK 后 %.1f 度"
+                        % (seg["segment_id"], _rs["max_deg"], _rs_ik["max_deg"]))
+                P = np.asarray(_P_ik, dtype=np.float64)
+                _rs = _rs_ik
         pieces.append(placed)
         seg_params.append(P)
         bounds.append({"segment_id": seg["segment_id"], "candidate": "cand_%02d" % n,
                        "frames": int(len(placed)), "align_yaw_deg": round(dyaw, 2),
                        "facing": _face, "terrain_dy_m": _dy, "ground_y": _ground,
-                       "speed": _spd,
+                       "speed": _spd, "rot_spike_deg": _rs["max_deg"],
                        "stage": "retimed"})
         prev = placed
         seg["selected"] = "cand_%02d" % n

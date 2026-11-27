@@ -97,6 +97,41 @@ def _mps(J, fps=20.0):
     return float(np.hypot(d[0], d[2])) / (len(J) / fps)
 
 
+def repair_spikes(params, min_deg=30.0, factor=2.5):
+    """把「单帧突然扭一大下」的帧用前后帧插值替换。
+
+    人工标定锚点：big_s08 第 263 帧根关节一帧转 113 度（前后帧 7–38 度），
+    画面上就是一次可见的扭曲。修法：该帧的全部旋转用 t-1 与 t+1 的球面插值替代，
+    平移线性插值；只动被判定为尖峰的帧，其余帧不变。
+    返回 (params2, 修掉的帧号列表)。
+    """
+    from scipy.spatial.transform import Rotation as R
+    P = np.array(params, dtype=np.float64, copy=True)
+    n = len(P)
+    if n < 4 or P.shape[1] < 85:
+        return P, []
+    rv = P[:, 0:72].reshape(n, 24, 3)
+    a = R.from_rotvec(rv[1:].reshape(-1, 3))
+    b = R.from_rotvec(rv[:-1].reshape(-1, 3))
+    per = np.degrees((a * b.inv()).magnitude().reshape(n - 1, 24)).max(axis=1)  # 帧 i→i+1
+    fixed = []
+    for t in range(1, n - 1):
+        prev = max(per[t - 2] if t >= 2 else 0.0, 1e-6)
+        nxt = per[t + 1] if t + 1 < len(per) else prev
+        local = max(prev, nxt, 1e-6)
+        if per[t - 1] > min_deg and per[t - 1] > factor * local:
+            ra = R.from_rotvec(P[t - 1, 0:72].reshape(24, 3))
+            rb = R.from_rotvec(P[t + 1, 0:72].reshape(24, 3))
+            # 球面中点：先求相对旋转，再取一半，左乘回 ra。
+            # 之前写成 rb.inv()**0.5 是错的（把相对旋转算反了，修完反而更大）。
+            rel = rb * ra.inv()
+            mid = (ra * R.from_rotvec(rel.as_rotvec() * 0.5)).as_rotvec().ravel()
+            P[t, 0:72] = mid
+            P[t, 82:85] = 0.5 * (P[t - 1, 82:85] + P[t + 1, 82:85])
+            fixed.append(t)
+    return P, fixed
+
+
 def apply_speed(J, speed):
     """按 slow/normal/fast 做时间伸缩，返回 (J2, info)。
 

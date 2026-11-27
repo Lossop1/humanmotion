@@ -196,6 +196,20 @@ def segment_candidates(job, sb):
                 continue
             if mm.get("decision") == "pass":
                 cands.append(n)
+        # 平滑优先：同一段里若有骨骼方向不抖的候选，就别选会扭一下的。
+        # 锚点：人工标定看到的那次扭曲，单帧骨骼方向变化远超常规（docs/证据度量 §9.2）
+        if len(cands) > 1:
+            from hm import quality_metrics as _QM
+            spikes = {}
+            for n in cands:
+                jp = job.dir / "segments" / seg["segment_id"] / ("candidate_%d" % n) / "joints22.npy"
+                if jp.exists():
+                    spikes[n] = _QM.bone_turn_spike(np.load(jp))
+            smooth = [n for n in cands if spikes.get(n, 0.0) <= 25.0]
+            if smooth and len(smooth) < len(cands):
+                job.log("平滑优先：%s 的 %d 个候选里有 %d 个单帧骨骼变化 >25 度，已排除"
+                        % (seg["segment_id"], len(cands), len(cands) - len(smooth)))
+                cands = smooth
         out.append((seg, cands))
     return out
 
