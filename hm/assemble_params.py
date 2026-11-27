@@ -170,7 +170,12 @@ def build(job, sb, verbose=True):
         # 拟合翻转兜底：优化法在个别帧会把肢体翻过去（候选关节是平滑的，拟合后单帧转动 118 度）。
         # 实测同句 HM_FIT_METHOD=ik 只有 22.5 度，所以「扭」的时候用解析 IK 重拟一遍取更平滑的。
         _rs = __import__("hm.quality_metrics", fromlist=["rot_spike"]).rot_spike(P)
-        if _m != "ik" and _rs["max_deg"] > 30.0:
+        # 区分「拟合翻转」与「本来就是快速动作」：候选自身的骨骼突变作为参照。
+        # 锚点：s08 候选 23 度、拟合后 118 度（5 倍）→ 翻转；s17 候选与拟合都 33 度左右 → 快速动作，不是缺陷。
+        _qm = __import__("hm.quality_metrics", fromlist=["bone_turn_spike", "rot_spike"])
+        _cand_spike = _qm.bone_turn_spike(placed)
+        _ratio = _rs["max_deg"] / max(_cand_spike, 1e-6)
+        if _m != "ik" and _rs["max_deg"] > 30.0 and _ratio > 1.5:
             _, _P_ik = FM.fit(placed, method="ik", refine=0, iters=4)
             _rs_ik = __import__("hm.quality_metrics", fromlist=["rot_spike"]).rot_spike(_P_ik)
             if _rs_ik["max_deg"] < _rs["max_deg"]:
@@ -184,6 +189,7 @@ def build(job, sb, verbose=True):
                        "frames": int(len(placed)), "align_yaw_deg": round(dyaw, 2),
                        "facing": _face, "terrain_dy_m": _dy, "ground_y": _ground,
                        "speed": _spd, "rot_spike_deg": _rs["max_deg"],
+                       "cand_spike_deg": round(_cand_spike, 1), "spike_ratio": round(_ratio, 2),
                        "stage": "retimed"})
         prev = placed
         seg["selected"] = "cand_%02d" % n

@@ -150,10 +150,16 @@ def run_one(sentence, job_id=None, k=6):
             print("  近似代替  %d 段：原文动作做不出来，用最接近的动作代替（不算通过）" % _approx_n)
         if _trim:
             print("  截尾      %d 帧（交界过大时截掉前段末尾，已在成片体现）" % _trim)
-        _rs = (bj2.get("metrics") or {}).get("rot_spike") or {}
-        if _rs.get("max_deg", 0) > 30:
-            print("  扭曲      单帧最大转动 %.1f 度（>30 度可疑，>60 度明显）：%d 帧超 30、%d 帧超 60"
-                  % (_rs["max_deg"], _rs["frames_over_30"], _rs["frames_over_60"]))
+        _segs = sb2.get("segments", [])
+        _flips = [s for s in _segs if (s.get("spike_ratio") or 0) > 1.5]
+        _fast = [s for s in _segs if (s.get("rot_spike_deg") or 0) > 30
+                 and (s.get("spike_ratio") or 0) <= 1.5]
+        if _flips:
+            print("  扭曲      拟合翻转 %d 段（拟合/候选比 >1.5，已用解析 IK 修正）：%s"
+                  % (len(_flips), "、".join(s["segment_id"] for s in _flips)))
+        if _fast:
+            print("  快速动作  %d 段单帧转动 >30 度（来自动作本身，不算缺陷）：%s"
+                  % (len(_fast), "、".join("%s %.1f 度" % (s["segment_id"], s["rot_spike_deg"]) for s in _fast)))
         (job_dir / "semantics.json").write_text(_json2.dumps(
             [dict(segment=s, status=st, detail=m) for s, st, m in status],
             ensure_ascii=False, indent=1), encoding="utf-8")
