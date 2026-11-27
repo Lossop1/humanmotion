@@ -5,9 +5,9 @@
     只有同一批句子跑两轮以上，用跨轮中位数与四分位，才能判断改动是否真的有效。
 
 用法
-    python eval_big.py --round 1
-    python eval_big.py --round 2
-    python eval_big.py --report
+    python -m hm.cli eval --round 1
+    python -m hm.cli eval --round 2
+    python -m hm.cli eval --report
 """
 import argparse
 import json
@@ -17,7 +17,8 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+# 这个模块曾在仓库根；搬进 hm/ops 后 parent 指向包内，仓库根要往上两级
+ROOT = Path(__file__).resolve().parents[2]
 
 # 对照实验用：每段候选数（默认 6）
 K_OVERRIDE = int(__import__("os").environ.get("HM_EVAL_K", "6"))

@@ -6,7 +6,7 @@
     所以这里只放未解决的 5 项，一条一件事，判起来快、也能直接看出有没有变化。
 
 用法
-    python -m tools.make_open_pack
+    python -m hm.ops.make_open_pack
 产物
     outputs/_open/clips/clip_NN.mp4
     outputs/_open/sheet.csv       clip / 句子 / 这次看什么 / verdict / note

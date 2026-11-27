@@ -5,7 +5,7 @@
     缓存命中的「一样」不算复现（那是同一份数据读两次），所以这里用 HM_NO_CACHE=1 跑。
 
 用法
-    python -m tools.reproduce_check --sentence "一个人向前走，然后转身" --twice 2
+    python -m hm.ops.reproduce_check --sentence "一个人向前走，然后转身" --twice 2
 输出
     两次的帧数、交界、选中候选、质量指标，逐项标「一致 / 不同」。
 """

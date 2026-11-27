@@ -5,8 +5,8 @@
     判据阈值必须落在人工标注上（看到 / 没看到），否则就是自证。
 
 用法
-    python -m tools.calib_packet --build     # 生成 outputs/_calib
-    python -m tools.calib_packet --score outputs/_calib/sheet.csv
+    python -m hm.ops.calib_packet --build     # 生成 outputs/_calib
+    python -m hm.ops.calib_packet --score outputs/_calib/sheet.csv
 """
 import argparse
 import csv
@@ -74,7 +74,7 @@ def build(limit=None):
         "标定说明\n\n"
         "1 看 clips 里的视频，逐行在 sheet.csv 的 answer 列填「有 / 轻微 / 没有」（接缝那几行填 明显 / 轻微 / 没有）。\n"
         "2 note 列选填：写一句你看到的现象（例：右手插进胸口、脚在地上滑行、衔接处顿了一下）。\n"
-        "3 填完运行：python -m tools.calib_packet --score outputs/_calib/sheet.csv\n"
+        "3 填完运行：python -m hm.ops.calib_packet --score outputs/_calib/sheet.csv\n"
         "   它会给出每一类的「人判分布 vs 机器指标」，并告诉我阈值该定在哪。\n"
         "4 answer_key.json 里是每条片子的机器指标与来源，判完再看。\n", encoding="utf-8")
     print()

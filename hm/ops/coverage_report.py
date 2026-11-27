@@ -5,7 +5,7 @@
     无法判的段集中在「捡取 / 看 / 喝水 / 直起身」这些本来就没有判据的类别上。
     只报一个百分比会把「新增了做不到判定的动作」误读成「判据退步」。
 用法
-    python -m tools.coverage_report --glob "big_s*_r30"
+    python -m hm.ops.coverage_report --glob "big_s*_r30"
 """
 import argparse
 import json

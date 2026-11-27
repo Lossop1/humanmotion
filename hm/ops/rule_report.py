@@ -7,8 +7,8 @@
     真正的灵敏度要人判（标定包在做这件事）。
 
 用法
-    python -m tools.rule_report --glob "big_s*_r26"      # 标准集
-    python -m tools.rule_report --glob "frs_*_r1"        # 新句集
+    python -m hm.ops.rule_report --glob "big_s*_r26"      # 标准集
+    python -m hm.ops.rule_report --glob "frs_*_r1"        # 新句集
 """
 import argparse
 import json

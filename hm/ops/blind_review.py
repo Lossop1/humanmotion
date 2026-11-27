@@ -5,8 +5,8 @@
     判完再用答案键算分，避免影响判断。
 
 用法
-    python -m tools.blind_review --build            # 生成 outputs/_review
-    python -m tools.blind_review --score sheet.csv  # 判完算分
+    python -m hm.ops.blind_review --build            # 生成 outputs/_review
+    python -m hm.ops.blind_review --score sheet.csv  # 判完算分
 
 产物
     outputs/_review/clips/clip_NN.mp4    随机顺序、匿名文件名
@@ -35,7 +35,7 @@ BATCHES = [("std", "r20", "big_s%02d_%s"), ("fresh", "r1", "frs_f%02d_%s")]
 
 
 def _sentences():
-    from hm import eval_big
+    from hm.ops import eval_big
     return {"std": eval_big.SENTENCES, "fresh": eval_big.sentences("fresh")}
 
 
@@ -77,11 +77,11 @@ def build(seed=20261121, limit=None):
         "   部分 = 能看出主要动作，但缺动作或多动作混在一起 / 衔接别扭\n"
         "   错   = 看不出这句话在说什么\n"
         "4 note 列可写一句原因（例如「挥手没抬起来」「中间停顿」）。\n"
-        "5 填完运行：python -m tools.blind_review --score outputs/_review/sheet.csv\n"
+        "5 填完运行：python -m hm.ops.blind_review --score outputs/_review/sheet.csv\n"
         "6 answer_key.json 在判完之前不要打开。\n", encoding="utf-8")
     print()
     print("  已生成 %d 个片段：%s" % (len(key), REVIEW))
-    print("  判完再算分：python -m tools.blind_review --score %s" % (REVIEW / "sheet.csv"))
+    print("  判完再算分：python -m hm.ops.blind_review --score %s" % (REVIEW / "sheet.csv"))
 
 
 def score(sheet_path):

@@ -6,8 +6,8 @@
     判断类的东西（用途、边界、否证）仍写目标树，不由脚本编。
 
 用法
-    python -m tools.make_ledger            # 打印到 stdout
-    python -m tools.make_ledger > docs/账本.md
+    python -m hm.ops.make_ledger            # 打印到 stdout
+    python -m hm.ops.make_ledger > docs/账本.md
 """
 import json
 import re
@@ -120,7 +120,7 @@ def quality_digest(rnd_tag):
 
 def main():
     print("# 账本\n")
-    print("由 `python -m tools.make_ledger` 从结果目录重算；手写不了的部分（用途、边界、否证）在 `目标树.md`。\n")
+    print("由 `python -m hm.ops.make_ledger` 从结果目录重算；手写不了的部分（用途、边界、否证）在 `目标树.md`。\n")
     print("| 项 | 值 | 来源 |")
     print("|---|---|---|")
     print("| 提交 | `%s` | git rev-parse |" % git_hash())

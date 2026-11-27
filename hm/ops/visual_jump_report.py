@@ -7,7 +7,7 @@
     所以换到图像空间：相邻帧的像素差，如果某一帧突然远大于本片常态，就是一次跳。
 
 用法
-    python -m tools.visual_jump_report --dir videos/blind_review/_review/clips
+    python -m hm.ops.visual_jump_report --dir videos/blind_review/_review/clips
 输出
     每条片段的 峰值/中位 像素差与倍数，以及和人工标注的对照。
 """

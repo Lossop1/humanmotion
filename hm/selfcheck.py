@@ -60,7 +60,7 @@ def main():
     print("  == 评测摘要 ==")
     p = latest_round()
     if p is None:
-        print("  还没有评测结果（先跑 python eval_big.py --round N）")
+        print("  还没有评测结果（先跑 python -m hm.cli eval --round N）")
         sys.exit(0)
     ok = summarize_eval(p)
     print()

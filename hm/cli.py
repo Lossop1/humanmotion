@@ -2,7 +2,7 @@
 
 为什么要有这个文件
     使用者明确指出：入口只能规定在 readme，标定放在一个文件夹，别不断自创脚本。
-    之前每个任务一个 tools/xxx.py（19 个）加顶层几个脚本，用户根本记不住该跑哪个。
+    之前每个任务一个 hm/ops/xxx.py（19 个）加顶层几个脚本，用户根本记不住该跑哪个。
     现在所有对外操作都收在这里，README 只写 `python -m hm.cli --help` 与几个子命令。
 
 子命令
@@ -35,7 +35,7 @@ def _run_module(mod, argv):
 
 
 def _run_op(name, argv):
-    """跑 hm.ops.<name>（原 tools/*.py，已收进包里，不再对外暴露脚本路径）。"""
+    """跑 hm.ops.<name>（原 hm/ops/*.py，已收进包里，不再对外暴露脚本路径）。"""
     import subprocess
     return subprocess.call([sys.executable, "-m", "hm.ops." + name] + argv, cwd=str(ROOT))
 
@@ -47,7 +47,7 @@ def main():
     p = sub.add_parser("run", help="一句中文 → 出片")
     p.add_argument("sentence")
     p.add_argument("--job-id", default=None)
-    p.add_argument("--k", default="3")
+    p.add_argument("--k", default=None)
     p.add_argument("--rest", nargs=argparse.REMAINDER)
 
     sub.add_parser("guard", help="守门自检（八项）")
@@ -81,7 +81,9 @@ def main():
         argv = [a.sentence]
         if a.job_id:
             argv += ["--job-id", a.job_id]
-        argv += ["--k", str(a.k)] + (a.rest or [])
+        if a.k is not None:
+            argv += ["--k", str(a.k)]
+        argv += (a.rest or [])
         return _run_module("hm.main", argv)
     if a.cmd == "guard":
         return _run_module("hm.guard", [])
@@ -89,8 +91,7 @@ def main():
         return _run_module("hm.selfcheck", [])
     if a.cmd == "eval":
         argv = ["--round", a.round] if a.round else []
-        import subprocess
-        return subprocess.call([sys.executable, "eval_big.py"] + argv, cwd=str(ROOT))
+        return _run_op("eval_big", argv)
     if a.cmd == "pack":
         if a.kind == "verify":
             return _run_op("make_verify_pack", ["--k", str(a.k)])
@@ -99,9 +100,9 @@ def main():
         return _run_op("run_random_set", ["--n", str(a.n), "--seed", str(a.seed), "--k", str(a.k)])
     if a.cmd == "measure":
         if a.kind == "quality":
-            return _run_op("measure_quality", ["--job", a.job or ""])
+            return _run_op("measure_quality", (["--glob", "outputs/%s/*" % a.job] if a.job else []))
         if a.kind == "mesh":
-            return _run_op("measure_mesh", ["--job", a.job or ""])
+            return _run_op("measure_mesh", (["--glob", "outputs/%s/*" % a.job] if a.job else []))
         if a.kind == "visual-jump":
             return _run_op("visual_jump_report", (["--dir", a.dir] if a.dir else []))
         return _run_op("coverage_report", [])
@@ -110,7 +111,7 @@ def main():
                  "test": "make_test_report", "semantic": "human_semantic_report"}
         if a.kind == "capability":
             return _run_module("hm.capability_report", [])
-        return _run_tool(table[a.kind] + ".py", a.rest or [])
+        return _run_op(table[a.kind], a.rest or [])
     if a.cmd == "score":
         argv = ["--verdicts", a.verdicts]
         if a.categories:

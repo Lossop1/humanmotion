@@ -9,7 +9,7 @@
     4 脚穿地直接用网格最低点与地面高度比
 
 用法
-    python -m tools.measure_mesh --glob "big_s*_r20" --stride 10
+    python -m hm.ops.measure_mesh --glob "big_s*_r20" --stride 10
 输出
     每个任务：手插躯干的帧数与最大插入深度（米）、网格穿地深度、部位顶点数
 """

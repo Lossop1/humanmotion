@@ -5,7 +5,7 @@
     sheet.csv 里写了「这条要看什么」，判的时候有的放矢。
 
 用法（GPU 机器）
-    python -m tools.make_verify_pack
+    python -m hm.ops.make_verify_pack
 产物
     outputs/_verify/clips/clip_NN.mp4
     outputs/_verify/sheet.csv     clip / 句子 / 看什么 / verdict / note

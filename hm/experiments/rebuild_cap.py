@@ -9,9 +9,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from hm import criteria_v2, job as jobmod, pose_rules
 from hm.capability import ACTIONS, APPROX_TH, SUPPORT_TH, classify
+from hm import paths as _paths  # 标定目录
 
 OUT = ROOT / "outputs" / "_capsheet"
-REF = ROOT / "outputs" / "_reference"
+REF = _paths.ref()
 
 
 def main():

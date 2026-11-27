@@ -8,6 +8,7 @@
 """
 import argparse
 import re
+from hm import paths as _paths  # 标定目录
 import sys
 import time
 from pathlib import Path
@@ -324,7 +325,7 @@ def step_a06(job, sb):
             pass
     # 第二道：提示词库。planner 的措辞不如库里测过的写法稳时，用库里的。
     from pathlib import Path as _P
-    _bp = _P(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
+    _bp = _paths.ref() / "prompt_bank.json"
     bank = load_json(_bp, default={}, want=dict)
     from_bank = 0
     import os as _os_bank

@@ -20,8 +20,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from hm import actions, criteria_v2, generate, to_joints
 from hm.prompt_variants import variants
+from hm import paths as _paths  # 标定目录
 
-REF = (Path(__file__).resolve().parent.parent / "outputs/_reference")
+REF = (_paths.ref())
 K = 4
 
 

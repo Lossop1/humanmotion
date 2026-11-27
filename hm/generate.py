@@ -29,7 +29,7 @@ def generate(prompts, lengths, name=None, seed=None):
     """一批提示词 → 一批特征。返回 [(T,263), ...]。
 
     seed 非空时先设随机种子：后端本身不接 seed（motius 的 infer_t2m 没有这个参数），
-    但采样噪声来自 torch 的全局随机状态，设了种子冷跑也能复现（实测见 tools/reproduce_check.py）。
+    但采样噪声来自 torch 的全局随机状态，设了种子冷跑也能复现（实测见 hm/ops/reproduce_check.py）。
     """
     if seed is not None:
         import random

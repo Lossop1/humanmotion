@@ -68,3 +68,37 @@ def test_legacy_callers_locate_render_scripts():
         for script in ("render_blender.py", "render_skeleton.py"):
             if script in text:
                 assert 'parents[1] / "%s"' % script in text, "%s 没有用 parents[1] 定位 %s" % (p.name, script)
+
+
+def test_cli_dispatch_targets_exist():
+    """hm.cli 里出现的每个分发型号都必须真的存在。
+
+    回归背景：结构重整时 hm.cli 调用了未定义的 _run_tool、并把消息发给
+    仓库根的 eval_big.py（已搬进 hm/ops），199 个测试全绿而 README 的命令是坏的。
+    """
+    import importlib.util
+    import re
+    src = (REPO / "hm/cli.py").read_text(encoding="utf-8")
+    names = set(re.findall(r'_run_op\("([a-z_]+)"', src))
+    names |= set(re.findall(r'"([a-z_]+)": "([a-z_]+)"', src)[0:0])
+    for table in re.findall(r'table = \{(.*?)\}', src, re.S):
+        names |= set(re.findall(r': "([a-z_]+)"', table))
+    names |= {"eval_big", "capability_report"}
+    missing = []
+    for n in sorted(names):
+        if importlib.util.find_spec("hm.ops." + n) is None and importlib.util.find_spec("hm." + n) is None:
+            missing.append(n)
+    assert not missing, "hm.cli 分发的模块不存在：%s" % missing
+
+
+def test_no_legacy_script_paths_in_text():
+    """文档与模块里不许再出现已删除的 tools/ 或根目录脚本命令。"""
+    bad = []
+    for p in list(REPO.glob("*.md")) + list((REPO / "docs").glob("*.md")) + list((REPO / "hm").rglob("*.py")):
+        if "__pycache__" in str(p):
+            continue
+        t = p.read_text(encoding="utf-8", errors="replace")
+        for pat in ("python -m tools.", "python tools/", "python eval_big.py"):
+            if pat in t:
+                bad.append((p.name, pat))
+    assert not bad, "仍在教用户跑已删除的脚本：%s" % bad

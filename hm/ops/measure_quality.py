@@ -1,8 +1,8 @@
 """在已有的任务目录上统计质量指标：穿地、脚滑、加速度比、胶囊自相交。
 
 用法
-    python -m tools.measure_quality                 # 扫 outputs/big_s*_r20（标准集）
-    python -m tools.measure_quality --glob "ctrl_*" # 扫别的任务
+    python -m hm.ops.measure_quality                 # 扫 outputs/big_s*_r20（标准集）
+    python -m hm.ops.measure_quality --glob "ctrl_*" # 扫别的任务
 
 输出
     每个任务一行 + 总体分布；有正负对照的句子（鼓掌 vs 走路）单独列出，用于检验自相交判据。

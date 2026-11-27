@@ -1,7 +1,7 @@
 """跑随机句集并打包成盲评包（句子可见，系统判定不可见）。
 
 用法（在 GPU 机器上）
-    python -m tools.run_random_set --n 20 --seed 20261127
+    python -m hm.ops.run_random_set --n 20 --seed 20261127
 产物
     outputs/_random/<seed>/clips/clip_NN.mp4
     outputs/_random/<seed>/sheet.csv       clip / sentence / verdict / note

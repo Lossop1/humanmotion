@@ -1,0 +1,18 @@
+{
+ "job_id": "explain",
+ "sentence_original": "一个人向前走",
+ "sentence_normalized": "一个人向前走",
+ "created": "2026-11-28 00:02:54",
+ "host": "p",
+ "platform": "Windows-11-10.0.26200-SP0",
+ "python": "3.13.7",
+ "git_rev": "729369f",
+ "config": {
+  "model": "momask",
+  "k": null,
+  "fps": 20,
+  "coordinate_system": "HumanML3D",
+  "schema": "storyboard_v1"
+ },
+ "note": ""
+}

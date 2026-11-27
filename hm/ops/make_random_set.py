@@ -11,7 +11,7 @@
     C 长句/复合：两三个动作连写（考验拆分与编排）
 
 用法
-    python -m tools.make_random_set --n 20 --seed 20261127 > outputs/_random/set_seed.txt
+    python -m hm.ops.make_random_set --n 20 --seed 20261127 > outputs/_random/set_seed.txt
 """
 import argparse
 import random

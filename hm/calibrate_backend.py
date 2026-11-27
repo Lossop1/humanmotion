@@ -27,8 +27,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from hm import generate, to_joints
 from hm.finish_job import BONES, dirs_of, rot_between
+from hm import paths as _paths  # 标定目录
 
-REF = (Path(__file__).resolve().parent.parent / "outputs/_reference")
+REF = (_paths.ref())
 PROBES = [
     ("walk", "a person walks forward", 56),
     ("stand", "a person stands still", 40),

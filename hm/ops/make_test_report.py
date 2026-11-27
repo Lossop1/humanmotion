@@ -1,7 +1,7 @@
 """生成测试报告（Markdown）：所有数字现场重算，不手抄。
 
 用法（在远端 GPU 机器上跑，数据都在那里）
-    python -m tools.make_test_report > docs/测试报告.md
+    python -m hm.ops.make_test_report > docs/测试报告.md
 
 包含
     1 测试环境
@@ -174,7 +174,7 @@ def coverage_section():
 def main():
     blocks = []
     blocks.append("# 测试报告\n")
-    blocks.append("本报告的数字全部由 `tools/make_test_report.py` 现场重算，不手抄。\n")
+    blocks.append("本报告的数字全部由 `hm/ops/make_test_report.py` 现场重算，不手抄。\n")
     blocks.append("## 1 测试环境\n")
     blocks += env_section()
     blocks.append("\n## 2 单元测试与包结构\n")

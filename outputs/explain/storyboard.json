@@ -1,0 +1,43 @@
+{
+ "job_id": "explain",
+ "sentence": "一个人向前走",
+ "segments": [
+  {
+   "segment_id": "seg_001",
+   "order": 1,
+   "action": "walk",
+   "source_text": "一个人向前走",
+   "object": null,
+   "relation": null,
+   "duration_frames": 52,
+   "speed": null,
+   "facing": null,
+   "spatial_target": null,
+   "text_gen": "a person walks forward",
+   "provenance": {
+    "action": "planner_llm(label)",
+    "source_text": "planner_llm(substring)",
+    "duration_frames": "planner_llm",
+    "text_gen": "planner_llm",
+    "facing": "null"
+   },
+   "support_status": "supported",
+   "support_reason": "能力表：向前走 最佳后端 momask",
+   "route": {
+    "model": "momask",
+    "model_version": "unknown",
+    "confidence": "high",
+    "reason": "能力表：walk 通过率 1.00",
+    "support_status": "support",
+    "pass_rate": 1.0,
+    "max_frames": 196,
+    "table_version": "capability_v1"
+   },
+   "text_gen_final": "a person walks forward",
+   "template_version": "planner_prompt_v1"
+  }
+ ],
+ "transitions": [],
+ "terrain": null,
+ "schema_version": "storyboard_v1"
+}

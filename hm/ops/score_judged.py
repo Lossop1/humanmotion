@@ -5,7 +5,7 @@
     所以判读结果单独存成 JSON（人可读、可复核），这份脚本只负责统计与分类汇总。
 
 用法
-    python -m tools.score_judged --verdicts 判定.json [--categories 分类.json]
+    python -m hm.ops.score_judged --verdicts 判定.json [--categories 分类.json]
 判定文件格式
     {"clip_01.mp4": "对", "clip_02.mp4": "部分", ...}
 分类文件（可选）
