@@ -196,8 +196,9 @@ def build(job, sb, verbose=True):
         # 视觉上就是两侧很快、中间慢下来。改为允许到两侧速率的 1.1 倍。
         # 速率比是判据：过渡速度不应超过两侧的 1.4 倍（否则比两侧快，看着像闪一下）。
         # 实测轮14 出现 4.07 倍（13 度用 2 帧走完），就是没有这条上限。
-        _cap_rate = 1.4 * max(rate, 1e-6)
-        n = int(min(60, max(n, math.ceil(gap / _cap_rate))))
+        # 帧数：交给 control.junction_frames（含速率比上限与 120 帧总上限，可单测）
+        _cap_n = int(__import__("os").environ.get("HM_TRANS_CAP", "120"))
+        n = CTL.junction_frames(gap, rate, cap=_cap_n)
         w_in = joint_speed(pieces[i - 1], tail=True)
         w_out = joint_speed(pieces[i], tail=False)
         nom = max(gap / max(n, 1), 1e-6)

@@ -38,6 +38,19 @@ def _rot_y(J, ang_deg):
 DIR_ANGLE = {"forward": 0.0, "left": 90.0, "right": -90.0, "backward": 180.0}
 
 
+def junction_frames(gap_deg, rate_deg_per_frame, cap=120, ratio_max=1.4, floor=2):
+    """过渡帧数：慢到不超两侧速率的 ratio_max 倍，快也别超过 cap 帧。
+
+    反例（轮25 S20）：姿态差 120.6°、两侧 0.6–1.0 度/帧，cap=60 时过渡被迫
+    2.01 度/帧（速率比 2.01 不合格）。cap=120 时 n=ceil(120.6/(1.4*1.0))=87，
+    速率比降到 1.39。
+    """
+    rate = max(float(rate_deg_per_frame), 1e-6)
+    n = max(floor, int(round(float(gap_deg) / rate)))
+    need = int(__import__("math").ceil(float(gap_deg) / (ratio_max * rate)))
+    return int(min(int(cap), max(n, need)))
+
+
 def enforce_facing(J, direction, global_forward_deg):
     """把这一段的世界行进方向转到请求的方向上，返回 (J2, info)。
 

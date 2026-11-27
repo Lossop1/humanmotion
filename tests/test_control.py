@@ -112,3 +112,16 @@ def test_apply_speed_does_not_explode_on_short_segments():
     J = _walk_J(n=5)
     out, _info = AP.apply_speed(J, "fast")
     assert len(out) == len(J)                  # 太短不做伸缩，避免退化成几帧
+
+
+def test_junction_frames_matches_the_s20_regression():
+    # 轮25 S20：姿态差 120.6°、两侧最慢 0.6 度/帧、较快 1.0 度/帧
+    n60 = AP.junction_frames(120.6, 1.0, cap=60)
+    n120 = AP.junction_frames(120.6, 1.0, cap=120)
+    assert 120.6 / n60 > 1.4          # 旧上限下速率比不合格
+    assert 120.6 / n120 <= 1.4 + 0.02  # 新上限下合格
+
+
+def test_junction_frames_floor_and_fast_motion():
+    assert AP.junction_frames(1.0, 50.0) >= 2        # 姿态差很小也不少于 2 帧
+    assert AP.junction_frames(90.0, 30.0) <= 120      # 动作很快时过渡不应无限长
