@@ -80,3 +80,18 @@ def missing_actions(source_text, prompt):
         if zh in src and not any(w in en for w in words):
             missing.append(zh)
     return missing
+
+
+def describe_zh(prompt):
+    """把英文提示词翻成「它实际要做什么」的中文短标签。
+
+    字幕要取实际提示词，而不是规划原句：实测规划说「一边走一边挥手」，
+    但提示词只有 walks forward，字幕却写「边走边挥手」——那是撒谎。
+    这里只做词表映射，不做翻译，宁可粗糙也不假装懂语义。
+    """
+    en = str(prompt or "").lower()
+    out = []
+    for zh, words in ACTION_LEX:
+        if any(w in en for w in words):
+            out.append(zh)
+    return out

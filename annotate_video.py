@@ -57,12 +57,23 @@ def annotate(job_id, out_name="final_captioned.mp4", crf=16):
         if i < len(junc):
             owner += [i] * junc[i]["transition_frames"]
     def _cap(seg):
-        """字幕 = 段落标签；原文提到但提示词没做的动作要标出来（缺：X）。"""
-        name = (seg.get("action") or "")[:10]
+        """字幕取自「实际提示词」，而不是规划原句。
+
+        规则：
+          1 用提示词反查中文动作（describe_zh），这是视频里真的在做的
+          2 提示词查不出动作时退回段落标签
+          3 原文提到、提示词没有的动作标「缺：X」
+          4 合并段标「合并」
+        """
+        from hm.prompt_normalize import describe_zh
+        acts = describe_zh(seg.get("text_gen_final") or "")
+        name = "、".join(acts) if acts else (seg.get("action") or "")[:10]
+        if seg.get("merged_from"):
+            name = "合并:" + name
         miss = seg.get("missing_actions") or []
         if miss:
             name += "（缺：%s）" % "、".join(miss)
-        return name
+        return name[:16]
     labels = [(str(i + 1), _cap(s)) for i, s in enumerate(segs)]
 
     # 验证状态角标：只看视频的人也要知道这一段有没有被校准量查过
