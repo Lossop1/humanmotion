@@ -174,3 +174,11 @@ def test_ambiguous_walk_back_declared_and_checked():
     assert ambiguity.declared("走回来") is None
     name, bad = ambiguity.check_interpretation("a person walks backward", {"backward_m": 0.3})
     assert name == "后退着回来" and not bad
+
+
+def test_usual_reading_of_walk_back():
+    """「走回来」的通常用法是转身走回去；只有原句写「倒退着」才用后退。"""
+    from hm import ambiguity
+    assert ambiguity.usual("走回来") == "转身往回走"
+    assert ambiguity.pick("一个人走回来")[0][1] == "转身往回走"
+    assert ambiguity.pick("一个人倒退着走回来")[0][1] == "后退着回来"

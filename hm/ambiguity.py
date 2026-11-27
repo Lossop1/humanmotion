@@ -16,6 +16,9 @@
 import re
 
 # 词 → [(解释名, 该解释对应的提示词要素, 可用判据)]
+# 列表第一项 = 通常用法（默认解释）。使用者定：标定要确定通常用法，
+# 例如「走回来」通常指「转身走回去」，不是「后退着回来」。
+# 只有原句带明确修饰（倒退着、侧着、原地…）时才偏离通常用法。
 AMBIGUOUS = {
     "走回来": [
         ("转身往回走", "turns around and walks back", {"yaw_deg": ("min", 120.0)}),
@@ -88,3 +91,72 @@ def check_interpretation(prompt, sig):
         elif kind == "max" and v > thr:
             bad.append("%s=%.1f > %.1f" % (key, v, thr))
     return name, bad
+
+
+# 原句里出现这些修饰时，才偏离通常用法
+HINTS = {
+    "后退着回来": ("倒退", "后退", "倒着", "背向"),
+    "侧着挪回来": ("侧着", "横着", "侧移"),
+    "转身往回走": ("转身", "回头"),
+    "转身跑回来": ("转身", "回头"),
+    "倒退着跑": ("倒退", "倒着", "背向"),
+    "原路退开": ("倒退", "后退", "倒着"),
+}
+
+
+def usual(term):
+    """该词的通常用法（列表第一项）。"""
+    opts = AMBIGUOUS.get(term) or []
+    return opts[0][0] if opts else None
+
+
+def pick(text, term=None):
+    """按原句修饰选解释：有明确修饰就用它，否则用通常用法。
+
+    返回 (解释名, 依据)，依据形如「通常用法」或「原句有『倒退』」。
+    """
+    s = str(text or "")
+    terms = [term] if term else [w for w, _ in lookup(s)]
+    out = []
+    for w in terms:
+        opts = AMBIGUOUS.get(w) or []
+        for name, _hint, _rule in opts:
+            hits = [h for h in HINTS.get(name, ()) if h in s]
+            if hits:
+                out.append((w, name, "原句有『%s』" % hits[0]))
+                break
+        else:
+            if opts:
+                out.append((w, opts[0][0], "通常用法"))
+    return out
+
+
+# 声明用的中文可能和表里的写法不一样（实测规划写「背向行进方向后退返回」），
+# 这里按关键词归一到表内的标准名，避免把「同一件事的两种说法」判成不一致。
+KEYS = {
+    "转身往回走": ("转身", "回头", "转过身"),
+    "后退着回来": ("后退", "倒退", "背向", "倒着"),
+    "侧着挪回来": ("侧", "横"),
+    "转身跑回来": ("转身", "回头"),
+    "倒退着跑": ("倒退", "倒着", "背向"),
+    "向前走开": ("向前", "走开", "离开"),
+    "原路退开": ("后退", "倒退", "退开"),
+    "转身走回原位": ("转身", "走回"),
+    "后退回原位": ("后退", "倒退"),
+    "绕圈走": ("绕", "圈"),
+    "原地转一圈": ("原地", "转一圈"),
+}
+
+
+def canonical(term, declared):
+    """把任意中文声明归一成表内标准名；认不出来就原样返回。"""
+    text = str(declared or "")
+    opts = [n for n, _h, _r in (AMBIGUOUS.get(term) or [])]
+    if not text:
+        return None
+    if text in opts:
+        return text
+    for name in opts:
+        if any(k in text for k in KEYS.get(name, ())):
+            return name
+    return text

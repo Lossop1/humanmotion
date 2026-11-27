@@ -111,8 +111,10 @@ source（原文片段）
 prompt（交给生成模型的英文）
 7 每条 prompt 逐字取自 <capability_list> 里的写法，只允许再补方向与快慢。
 8 每一段都必须填 direction，取值 forward / backward / left / right / in_place / circle。
-  多义动作（走回来/跑回来/离开/回到原位/绕一圈）必须选一种解释，并在 label 里写「理解为：X」，
-  例如「走回来」→ 转身往回走 / 后退着回来 / 侧着挪回来；不能默默当成后退。
+  多义动作（走回来/跑回来/离开/回到原位/绕一圈）必须选一种解释，并在 label 里写「理解为：X」。
+  默认取「通常用法」：「走回来」= 转身走回去（turns around and walks back），
+  只有原句明确写了「倒退着/倒着/背向」才用后退，「侧着/横着」才用侧移；
+  不要默默选成后退。
   向左/向右必须用 sidesteps to the left / sidesteps to the right 这类写法；
   实测 "walks to the right" 生成出来是直走（朝向与行进夹角只有 4–12 度），不要用。
   并且必须从该段自己的原文判断，不能沿用上一段：原文说「向左走」这段就是 left。

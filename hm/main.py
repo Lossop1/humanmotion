@@ -62,6 +62,19 @@ def verify_segments(job_dir, sb):
         if _amb:
             out.append((seg["segment_id"][-3:], "未验证", _amb[:44]))
             continue
+        # 声明的解释必须与提示词实际做的一致：实测规划写「转身走回原处」，
+        # 提示词却是 walks forward —— 声明的和做的不是一件事
+        if seg.get("ambiguous_terms") and seg.get("interpretation"):
+            try:
+                from hm import ambiguity as _ambm
+                _fromprompt, _ = _ambm.check_interpretation(prompt, {})
+                _decl_c = _ambm.canonical(seg["ambiguous_terms"][0], seg.get("interpretation"))
+                if _fromprompt and _decl_c and _fromprompt != _decl_c:
+                    out.append((seg["segment_id"][-3:], "未验证",
+                                "声明「%s」但提示词是「%s」" % (seg["interpretation"], _fromprompt)))
+                    continue
+            except Exception:
+                pass
         _dead = signature.dead_end_in(prompt)
         if _dead:
             out.append((seg["segment_id"][-3:], "未验证", "含做不出来的动作：%s（已近似）" % _dead))
@@ -164,9 +177,11 @@ def run_one(sentence, job_id=None, k=6):
             for _s in _segs_amb:
                 _opts = [n for _w, opts in _amb.lookup(_s.get("source_text") or "")
                          for n, _h, _r in opts]
-                print("  多义动作  %s：本次理解为「%s」；也可理解为 %s"
+                _picked = _amb.pick(_s.get("source_text") or "", _s["ambiguous_terms"][0])
+                _basis = _picked[0][2] if _picked else ""
+                print("  多义动作  %s：本次理解为「%s」（%s）；也可理解为 %s"
                       % ("、".join(_s["ambiguous_terms"]), _s.get("interpretation") or "未声明",
-                         " / ".join(_opts) or "（无备选）"))
+                         _basis, " / ".join(_opts) or "（无备选）"))
         except Exception:
             pass
         # 画面跳变（观察量，不设判据）：相邻帧像素差的局部倍数。

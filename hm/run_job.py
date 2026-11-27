@@ -272,10 +272,21 @@ def step_a06(job, sb):
             if _hits:
                 _decl = _amb.declared(seg.get("action"))
                 seg["ambiguous_terms"] = [w for w, _ in _hits]
-                seg["interpretation"] = _decl
+                seg["interpretation"] = _amb.canonical(seg["ambiguous_terms"][0], _decl) if _decl else None
+                if _decl:
+                    seg["interpretation_raw"] = _decl
                 if not _decl:
-                    job.log("多义未声明：%s 含 %s，规划没有写「理解为：X」"
-                            % (seg["segment_id"], [w for w, _ in _hits]))
+                    # 规划没声明时，按「实际提示词」推断它到底做的是哪一种解释：
+                    # 提示词本身就是执行层的声明，推断出来也要标依据，不能悄悄算数
+                    _inf, _ = _amb.check_interpretation(final, {})
+                    if _inf:
+                        seg["interpretation"] = _inf
+                        seg["interpretation_basis"] = "由提示词推断"
+                        job.log("多义未声明：%s 含 %s，按提示词推断为「%s」"
+                                % (seg["segment_id"], [w for w, _ in _hits], _inf))
+                    else:
+                        job.log("多义未声明：%s 含 %s，提示词也推断不出解释"
+                                % (seg["segment_id"], [w for w, _ in _hits]))
         except Exception:
             pass
         seg["text_gen_final"] = final
