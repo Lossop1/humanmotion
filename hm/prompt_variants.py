@@ -8,6 +8,7 @@
     变体只做规则化删减，不让 LLM 重写——重写会改语义，风险更大。
 """
 import re
+from hm import paths as _paths  # 标定目录（calibration/，兼容 outputs/_reference）
 
 # 可以安全删掉的修饰尾巴
 TAILS = (
@@ -47,7 +48,7 @@ def bank_alternatives(prompt, limit=2, min_rate=0.5):
     """从提示词库里取同动作的其它写法（方向必须一致，通过率不低于 min_rate）。"""
     import json
     from pathlib import Path
-    p = Path(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
+    p = _paths.ref() / "prompt_bank.json"
     if not p.exists():
         return []
     bank = json.loads(p.read_text(encoding="utf-8"))
@@ -88,7 +89,7 @@ def bank_rate(prompt):
     """查提示词库：返回 (动作键, 最优通过率, 最优写法) 或 None。方向必须一致。"""
     import json
     from pathlib import Path
-    p = Path(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
+    p = _paths.ref() / "prompt_bank.json"
     if not p.exists():
         return None
     bank = json.loads(p.read_text(encoding="utf-8"))

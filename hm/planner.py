@@ -14,6 +14,7 @@ import urllib.request
 
 from hm import config
 from hm.jsonio import load_json
+from hm import paths as _paths  # 标定目录（calibration/，兼容 outputs/_reference）
 
 API = "https://api.deepseek.com/chat/completions"
 
@@ -27,7 +28,7 @@ def _capability_block():
         并在 label 里标明「近似：…」。
     """
     from pathlib import Path as _Path
-    p = _Path(__file__).resolve().parent.parent / "outputs" / "_reference" / "prompt_bank.json"
+    p = _paths.ref() / "prompt_bank.json"
     # 读不到或损坏时返回空清单：规划仍可进行，但会少了「可用动作」约束，所以损坏时要出声
     bank = load_json(p, want=dict)
     if bank is None:

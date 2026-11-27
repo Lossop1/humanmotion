@@ -13,18 +13,26 @@
 设计依据、各节点的判据、实测数字和被否证的方案，都记录在 [`目标树.md`](目标树.md)
 （唯一维护文档）。**先读它，再改代码。**
 
-## 目录
+## 目录与入口（唯一规范）
 
 ```
-hm/                 主包：规划、生成、装配、拟合、渲染、判据、评测（入口 main → run_full → run_job）
-hm/legacy/          run_full 之前的旧拼接/检查链路，只留作对照；核心代码不许依赖它
-hm/experiments/     一次性探针、诊断与小实验，结论已记在 目标树.md；需要模型与数据才能运行
-tests/              单元测试（纯 CPU，不需要模型与 GPU）；test_layout 守住包结构与导入
-outputs/_reference/ 能力表、提示词库、判据校准数据（入库，评测依赖它们）
-eval_big.py         30 句 × 两轮的评测；eval_fresh.txt 是未参与调参的新句集
-scratch/            一次性实验脚本的归档，不属于产品代码，不保证能运行
-目标树.md            目标、判据、状态、否证记录
+python -m hm.cli --help        唯一用户入口：出片、守门、评测、判定包、度量、报告、判定统计
+python -m hm.main "一句话"      等价 hm.cli run，保留旧习惯
+python -m hm.guard             守门八项自检
 ```
+
+```
+hm/                 主包：规划 / 生成 / 装配 / 拟合 / 渲染 / 判据 / CLI（hm.cli）
+calibration/        标定数据唯一目录：能力表、提示词库、判据阈值（实际路径 outputs/_reference，
+                    代码里所有引用都指向它；不要在这些数据之外新建标定文件）
+tests/              单元测试（纯 CPU）
+outputs/<job-id>/   每个任务的产物
+docs/               只留两份文档：证据度量.md（数字与命令）、设计说明书.md
+docs/_archive/      历史文档，仅供查阅，不再维护
+目标树.md            目标、判据、状态、否证记录（改代码前先读）
+```
+
+历史脚本一律不作为入口；需要新功能请加到 `hm.cli` 的子命令里，不要再新建 `tools/xxx.py`。
 
 ## 安装
 
@@ -60,10 +68,14 @@ export DEEPSEEK_API_KEY=...        # Windows PowerShell: $env:DEEPSEEK_API_KEY="
 ## 使用
 
 ```bash
-python -m hm.main "一个人先向前走，然后转身，最后挥手"      # 出片
-python -m hm.main --explain "一句话"                         # 只规划，说明能保证到什么程度
-python -m hm.main --batch sentences.txt                      # 批量，每行一句
-python -m hm.main --check                                    # 冒烟：三句各跑一遍
+python -m hm.cli run "一个人先向前走，然后转身，最后挥手"     # 出片
+python -m hm.cli run "一句话" --k 3                          # 指定候选数
+python -m hm.cli guard                                      # 守门八项
+python -m hm.cli eval --round 36                            # 30 句标准集评测
+python -m hm.cli pack open                                  # 生成「只含未解决项」的判定包
+python -m hm.cli pack verify                                # 8 条全项判定包
+python -m hm.cli pack random --n 20 --seed 20261127         # 随机句集
+python -m hm.cli score --verdicts 判定.json                  # 人工判定统计
 ```
 
 出口码：`0` 出片且几何通过、没有被判可疑或近似代替的段；`1` 出片但有可疑段、近似代替的段或几何不过；`2` 没出片（做不了，或所有段都没通过检查）。
@@ -72,23 +84,13 @@ python -m hm.main --check                                    # 冒烟：三句�
 
 ```
 render/final.mp4             原始渲染（1080 方形）
-render/final_cropped.mp4     裁到人物（720）
+render/final_cropped.mp4     裁到人物
 render/final_captioned.mp4   字幕 + 验证角标（看这个）
 分镜.png                     每段一格，标题前带状态：OK 通过 / ? 未验证 / X 可疑
 semantics.json               逐段语义状态与原因
 storyboard.json              分镜与选择记录（prompt / source / 候选 / 选中项）
 run.log                      逐步日志
 ```
-
-不知从哪看起时，用一键演示脚本：
-
-```bash
-bash tools/demo.sh "一个人先向前走，然后转身，最后挥手告别"
-```
-
-它会跑一句、列出四件产物、打印每段语义状态与交界结论，并按退出码给出人可读的判定。
-
-> 注：`runs/` 是早期实现的输出目录，`legacy/render.py` 与 `finish_job` 里取面部资源仍指向它；主链一律写 `outputs/`。这个双根目录是已知技术债，见 `docs/闭环清单.md` 2.5。
 
 ## 常用环境变量
 

@@ -22,12 +22,13 @@ from hm import config, generate, job as jobmod, pose_rules, repair, to_joints
 
 # 动作类别表：(类别键, 中文, 英文提示词, 关键词, 帧数)
 from hm.actions import ACTIONS_ALL
+from hm import paths as _paths  # 标定目录（calibration/，兼容 outputs/_reference）
 ACTIONS = [(a[0], a[1], a[2], (a[2].split()[1:4]), a[3]) for a in ACTIONS_ALL]
 
 SUPPORT_TH = 0.75      # 通过率 ≥ 此值记为支持
 APPROX_TH = 0.40       # 介于两线之间记为可近似
 TABLE_VERSION = "capability_v4"
-REF_DIR = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
+REF_DIR = _paths.ref()
 
 
 def _hard_check(J, pose_th):

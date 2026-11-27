@@ -15,8 +15,9 @@ import numpy as np
 
 from hm import job as jobmod
 from hm import pose_rules
+from hm import paths as _paths  # 标定目录（calibration/，兼容 outputs/_reference）
 
-REF_DIR = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
+REF_DIR = _paths.ref()
 VERSION = "criteria_v5"
 
 

@@ -17,10 +17,11 @@ import numpy as np
 
 from hm import config
 from hm.job import BONES
+from hm import paths as _paths  # 标定目录（calibration/，兼容 outputs/_reference）
 
 RULE_VERSION = "pose_rules_v1"
 PAD_FRACTION = 0.25   # 包络两侧各放宽的比例，见 pad()
-REF_DIR = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
+REF_DIR = _paths.ref()
 
 # 这些动作在高姿态下膝会向前、躯干会前倾，不按通用阈值判
 EXCEPTIONS = {

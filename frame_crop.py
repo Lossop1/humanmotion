@@ -90,6 +90,9 @@ def crop_square(job_id, out_name="final_cropped.mp4", out_size=720, margin=1.38)
         return job / "render" / out_name
     ch, cw = b - t, r - l
     side = int(max(ch, cw) * margin)
+    # 不要放大：裁出来的框比输出尺寸小时，放大只会变糊（实测使用者判「分辨率崩溃」）
+    if side < out_size:
+        out_size = max(240, side)
     cx, cy = (l + r) // 2, (t + b) // 2
     x0 = max(0, min(w - side, cx - side // 2))
     y0 = max(0, min(h - side, cy - side // 2))

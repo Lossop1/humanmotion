@@ -14,8 +14,9 @@ from pathlib import Path
 
 from hm import backends
 from hm.jsonio import load_json
+from hm import paths as _paths  # 标定目录（calibration/，兼容 outputs/_reference）
 
-REF = Path(__file__).resolve().parent.parent / "outputs" / "_reference"
+REF = _paths.ref()
 
 
 def thresholds(backend):
