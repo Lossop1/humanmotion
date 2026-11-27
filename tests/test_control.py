@@ -182,3 +182,11 @@ def test_usual_reading_of_walk_back():
     assert ambiguity.usual("走回来") == "转身往回走"
     assert ambiguity.pick("一个人走回来")[0][1] == "转身往回走"
     assert ambiguity.pick("一个人倒退着走回来")[0][1] == "后退着回来"
+
+
+def test_force_jog():
+    """跑统一成 jogs：runs/sprints 实测是整段弹跳（骨盆起伏 0.85–1.0 米）。"""
+    from hm.prompt_normalize import force_jog
+    assert force_jog("a person runs forward") == "a person jogs forward"
+    assert force_jog("a person sprints forward fast") == "a person jogs forward fast"
+    assert force_jog("a person walks forward") == "a person walks forward"

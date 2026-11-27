@@ -259,6 +259,15 @@ def step_a06(job, sb):
                 reused += 1
                 job.log("A06 %s 采用能力表测过的提示词：%r（planner 原为 %r）"
                         % (seg["segment_id"], tested, prompt))
+        # 「跑」统一换成 jogs：实测 runs/sprints 是整段弹跳（骨盆起伏 0.85–1.0 米）
+        try:
+            from hm.prompt_normalize import force_jog as _fjg
+            _j = _fjg(final)
+            if _j != final:
+                job.log("跑步写法统一：%r → %r" % (final[:34], _j[:34]))
+                final = _j
+        except Exception:
+            pass
         # 速度词进提示词：实测「慢慢转身」并不慢，因为只做了帧数伸缩
         try:
             from hm.prompt_normalize import apply_speed_word as _spw

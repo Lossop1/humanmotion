@@ -119,3 +119,21 @@ def apply_speed_word(prompt, speed):
         return text
     # 已经以 in place / around 结尾的，副词放句末更自然
     return "%s %s" % (text, word)
+
+
+def force_jog(prompt):
+    """把「跑」统一成 jogs 的写法。
+
+    实测（各 3 次生成的骨盆起伏）：runs forward 0.97 米、sprints 0.86 米、
+    steady pace 0.85 米 —— 整段在弹跳，使用者判「跳了一下 / 还是有浮空」；
+    只有 jogs forward 是 0.12 米。所以无论 planner 写哪种跑法，执行层统一换掉。
+    """
+    text = str(prompt or "")
+    low = text.lower()
+    for word in ("sprints", "sprinting", "sprint", "runs", "running", "run"):
+        if word in low:
+            text = text.replace(word, "jogs")
+            text = text.replace(word.capitalize(), "jogs")
+            low = text.lower()
+            break
+    return text
