@@ -202,6 +202,14 @@ def dead_end_in(prompt):
     return ""
 
 
+def check_ambiguous(seg):
+    """多义词没有声明解释时给出说明（调用方据此判「未验证」）。"""
+    if seg.get("ambiguous_terms") and not seg.get("interpretation"):
+        return "含多义动作 %s，规划没声明「理解为：X」，无法判断做的是哪一种" % (
+            "、".join(seg["ambiguous_terms"]))
+    return None
+
+
 def check(prompt, sig, backend=None):
     """返回 (ok, 不合格项, 观察值)。没有规则命中时 ok 为 None。"""
     text = str(prompt).lower()

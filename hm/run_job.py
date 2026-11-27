@@ -265,6 +265,19 @@ def step_a06(job, sb):
             final = _spw(final, seg.get("speed"))
         except Exception:
             pass
+        # 多义词：原文命中多义表时，检查规划有没有声明「理解为：X」
+        try:
+            from hm import ambiguity as _amb
+            _hits = _amb.lookup(seg.get("source_text") or "")
+            if _hits:
+                _decl = _amb.declared(seg.get("action"))
+                seg["ambiguous_terms"] = [w for w, _ in _hits]
+                seg["interpretation"] = _decl
+                if not _decl:
+                    job.log("多义未声明：%s 含 %s，规划没有写「理解为：X」"
+                            % (seg["segment_id"], [w for w, _ in _hits]))
+        except Exception:
+            pass
         seg["text_gen_final"] = final
         seg["template_version"] = version
         # 字幕一致性：原文提到、提示词里没有的动作，显式记下来

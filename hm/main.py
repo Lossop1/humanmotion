@@ -51,9 +51,16 @@ def verify_segments(job_dir, sb):
         # 合并段要按拆开的两个动作分别查：任一子动作「无法判」时，整段只能算「未验证」，
         # 不能算「通过」——否则一个没做出来的挥手会被 merged 的另一半掩盖过去。
         # 规划层自己标注的「近似：…」同样不算通过：这说明原文动作做不出来
-        _label = (seg.get("label") or "")
-        if _label.startswith("近似"):
+        # 分镜里这个字段叫 action；原先读 label 永远是空串，导致「近似：…」根本不会触发未验证
+        _label = (seg.get("action") or seg.get("label") or "")
+        # 「近似」不一定出现在开头（实测「原地转身第一圈 → 近似：第二圈…」），出现即算近似
+        if "近似" in _label:
             out.append((seg["segment_id"][-3:], "未验证", _label[:40]))
+            continue
+        # 多义动作没有声明解释 → 未验证（不许悄悄当成某一种理解通过）
+        _amb = signature.check_ambiguous(seg)
+        if _amb:
+            out.append((seg["segment_id"][-3:], "未验证", _amb[:44]))
             continue
         _dead = signature.dead_end_in(prompt)
         if _dead:
@@ -150,6 +157,18 @@ def run_one(sentence, job_id=None, k=6):
             print("  近似代替  %d 段：原文动作做不出来，用最接近的动作代替（不算通过）" % _approx_n)
         if _trim:
             print("  截尾      %d 帧（交界过大时截掉前段末尾，已在成片体现）" % _trim)
+        # 多义动作：把「本次怎么理解」和「还能怎么理解」都打出来，让使用者能否决
+        try:
+            from hm import ambiguity as _amb
+            _segs_amb = [s for s in sb2.get("segments", []) if s.get("ambiguous_terms")]
+            for _s in _segs_amb:
+                _opts = [n for _w, opts in _amb.lookup(_s.get("source_text") or "")
+                         for n, _h, _r in opts]
+                print("  多义动作  %s：本次理解为「%s」；也可理解为 %s"
+                      % ("、".join(_s["ambiguous_terms"]), _s.get("interpretation") or "未声明",
+                         " / ".join(_opts) or "（无备选）"))
+        except Exception:
+            pass
         # 画面跳变（观察量，不设判据）：相邻帧像素差的局部倍数。
         # 人判的 10 条跳变里关节量只抓到 4 条；图像侧局部倍数 >3 时 70%/86%
         _vpath = job_dir / "render" / "final_captioned.mp4"

@@ -161,3 +161,16 @@ def test_describe_zh_march_and_sidestep():
     assert describe_zh("a person marches in place with high knees") == ["踏步"]
     assert describe_zh("a person sidesteps to the left") == ["侧移"]
     assert describe_zh("a person walks forward") == ["走"]
+
+
+def test_ambiguous_walk_back_declared_and_checked():
+    """「走回来」必须先声明解释；没声明就判未验证，不能默认当后退。"""
+    from hm import ambiguity
+    hits = ambiguity.lookup("一个人快速跑过去，然后慢慢走回来")
+    assert hits and hits[0][0] == "走回来"
+    names = [n for _w, opts in hits for n, _h, _r in opts]
+    assert "转身往回走" in names and "后退着回来" in names
+    assert ambiguity.declared("走回来（理解为：转身往回走）") == "转身往回走"
+    assert ambiguity.declared("走回来") is None
+    name, bad = ambiguity.check_interpretation("a person walks backward", {"backward_m": 0.3})
+    assert name == "后退着回来" and not bad
