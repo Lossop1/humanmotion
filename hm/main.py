@@ -150,6 +150,36 @@ def run_one(sentence, job_id=None, k=6):
             print("  近似代替  %d 段：原文动作做不出来，用最接近的动作代替（不算通过）" % _approx_n)
         if _trim:
             print("  截尾      %d 帧（交界过大时截掉前段末尾，已在成片体现）" % _trim)
+        # 画面跳变（观察量，不设判据）：相邻帧像素差的局部倍数。
+        # 人判的 10 条跳变里关节量只抓到 4 条；图像侧局部倍数 >3 时 70%/86%
+        _vpath = job_dir / "render" / "final_captioned.mp4"
+        if not _vpath.exists():
+            _vpath = job_dir / "render" / "final.mp4"
+        if _vpath.exists():
+            try:
+                import cv2 as _cv2
+                import numpy as _np2
+                _cap = _cv2.VideoCapture(str(_vpath))
+                _prev, _diffs = None, []
+                while True:
+                    _ok, _fr = _cap.read()
+                    if not _ok:
+                        break
+                    _g = _cv2.cvtColor(_cv2.resize(_fr, (240, 240)), _cv2.COLOR_BGR2GRAY).astype("float32")
+                    if _prev is not None:
+                        _diffs.append(float(_np2.abs(_g - _prev).mean()))
+                    _prev = _g
+                _cap.release()
+                if len(_diffs) > 10:
+                    _arr = _np2.asarray(_diffs)
+                    _local = []
+                    for _i in range(len(_arr)):
+                        _lo, _hi = max(0, _i - 10), min(len(_arr), _i + 11)
+                        _win = _np2.concatenate([_arr[_lo:_i], _arr[_i + 1:_hi]])
+                        _local.append(float(_arr[_i]) / max(float(_np2.median(_win)), 1e-6))
+                    print("  画面跳变  局部倍数 %.1f（观察量；>3 时人判灵敏 70%%、特异 86%%）" % max(_local))
+            except Exception as _e:
+                print("  画面跳变  跳过（%s）" % str(_e)[:40])
         _segs = sb2.get("segments", [])
         _flips = [s for s in _segs if (s.get("spike_ratio") or 0) > 1.5]
         _fast = [s for s in _segs if (s.get("rot_spike_deg") or 0) > 30
