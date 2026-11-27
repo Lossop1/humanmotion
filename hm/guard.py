@@ -115,6 +115,30 @@ def check_plan_consistency(job_id="guard_plan"):
         pred, act, "日志有解释" if explained else "日志没有解释")
 
 
+def check_caption_consistency(job_id="guard_caption"):
+    """动作在原文里有、提示词里没有时，字幕/分镜必须显式标出「缺」。
+
+    实测过的反例：planner 给「walks forward and waves hello」，能力表替换成「walks forward」，
+    挥手整段消失，而字幕仍写「边走边挥手」——这就是「字幕说做了、其实没做」。
+    现在两处都修了，这个检查防止回归。
+    """
+    import json
+    pr = subprocess.run([sys.executable, "-m", "hm.main", "一个人一边走一边挥手",
+                         "--job-id", job_id, "--k", "2"],
+                        cwd=str(ROOT), capture_output=True, text=True)
+    sb = ROOT / "outputs" / job_id / "storyboard.json"
+    if not sb.exists():
+        return False, "没有 storyboard"
+    segs = json.loads(sb.read_text(encoding="utf-8")).get("segments", [])
+    # 判据：每一段「原文提到的动作」都必须出现在该段提示词里（missing_actions 为空）。
+    # 注意不能要求所有段的提示词都含 wave —— 句子可能被拆成「走」「挥手」两段。
+    miss = [(s.get("segment_id"), s.get("missing_actions")) for s in segs if s.get("missing_actions")]
+    if not miss:
+        covered = "wave" in " ".join((s.get("text_gen_final") or "").lower() for s in segs)
+        return True, "各段提示词覆盖了原文动作%s" % ("（含挥手）" if covered else "")
+    return False, "这些段丢失了原文动作：%s" % miss
+
+
 def run_cli(sentence, job_id):
     pr = subprocess.run([sys.executable, "-m", "hm.main", sentence, "--job-id", job_id],
                         cwd=str(ROOT), capture_output=True, text=True)
@@ -172,6 +196,11 @@ def main():
     if text is not None:
         print("  %-9s %s  %d 行" % ("doc", "通过" if not miss and "测试标记" not in text else "失败",
                                     len(text.splitlines())))
+
+    ok, msg = check_caption_consistency()
+    print("  %-9s %s  %s" % ("caption", "通过" if ok else "失败", msg), flush=True)
+    if not ok:
+        failures.append("caption：%s" % msg)
 
     if not a.fast:
         ok, msg = check_merged_actions()
