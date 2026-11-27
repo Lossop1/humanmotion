@@ -23,7 +23,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DOC = ROOT / "目标树.md"
-REQUIRED_HEADINGS = ["### G16 ", "### G17 ", "### G18 ", "### G19 ", "### G20 "]
+# 文档已改为「状态表 + 枚举」的紧凑形态（使用者要求：不要冗余）。
+# 这里检查的是文档仍具备这三块：状态表、否证清单、边界，而不是旧的分节标题。
+REQUIRED_HEADINGS = ["## 状态表", "## 否证", "## 边界"]
 
 CASES = [
     ("single", "一个人向前走", 0, []),
