@@ -42,12 +42,16 @@ def test_enforce_facing_forward_leaves_segment_untouched():
     assert info["applied_deg"] == pytest.approx(0.0, abs=1e-6)
 
 
-def test_enforce_facing_left_rotates_to_plus_90():
-    J = _walk_J()                                  # 自然朝 +z（0°）
-    out, info = AP.enforce_facing(J, "left", 0.0)
-    phi, _d = AP._disp_dir(out)
-    assert ((phi - 0.0 + 180.0) % 360.0) - 180.0 == pytest.approx(90.0, abs=2.0)
-    assert info["applied_deg"] == pytest.approx(90.0, abs=1e-6)
+def test_enforce_facing_skips_left_and_right():
+    """左右不整体旋转：旋转后身体仍朝行进方向，看起来还是直走。
+
+    实测 "walks to the right" 朝向与行进夹角只有 4–12 度，必须换成 sidesteps 写法。
+    """
+    J = _walk_J()
+    for name in ("left", "right"):
+        out, info = AP.enforce_facing(J, name, 0.0)
+        assert np.allclose(out, J)
+        assert info and "skipped" in info
 
 
 def test_enforce_facing_backward_rotates_to_180():
@@ -84,7 +88,15 @@ def test_apply_terrain_none_means_noop():
     assert np.allclose(out, J) and dy is None
 
 
-def test_apply_speed_slow_adds_frames_and_slows_down():
+def test_apply_speed_off_by_default(monkeypatch):
+    """默认不伸缩帧数：使用者把「快跑」看成「快放」，那正是帧数伸缩的副作用。"""
+    J = _walk_J(n=40)
+    out, info = AP.apply_speed(J, "fast")
+    assert len(out) == len(J) and info is None
+
+
+def test_apply_speed_slow_adds_frames_and_slows_down(monkeypatch):
+    monkeypatch.setattr(AP, "_USE_WARP", True)
     J = _walk_J(n=40)
     before = AP._mps(J)
     out, info = AP.apply_speed(J, "slow")
@@ -93,7 +105,8 @@ def test_apply_speed_slow_adds_frames_and_slows_down():
     assert abs(info["err_pct"]) <= 5.0        # 期望 = 原速度 / 因子，误差应很小
 
 
-def test_apply_speed_fast_removes_frames_and_speeds_up():
+def test_apply_speed_fast_removes_frames_and_speeds_up(monkeypatch):
+    monkeypatch.setattr(AP, "_USE_WARP", True)
     J = _walk_J(n=60)
     before = AP._mps(J)
     out, info = AP.apply_speed(J, "fast")

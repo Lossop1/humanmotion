@@ -188,6 +188,24 @@ def build(job, sb, verbose=True):
                 _rs = _rs_ik
         pieces.append(placed)
         seg_params.append(P)
+        # 拟合后补一次朝向校正：opt 拟合会重解根轨迹，实测把「向右走」解成了直走
+        _req = str(seg.get("facing") or seg.get("direction") or "").strip().lower()
+        if __import__("os").environ.get("HM_DEBUG_FACE") == "1":
+            _dbg = CTL.params_disp(P)
+            job.log("调试朝向：req=%r g_forward=%r 拟合后方向=%r 距离=%.2f"
+                    % (_req, _g_forward, None if _dbg[0] is None else round(_dbg[0], 1), _dbg[1]))
+        if _req in CTL.DIR_ANGLE and _g_forward is not None:
+            _phi_p, _d_p = CTL.params_disp(P)
+            if _phi_p is not None:
+                _target_p = CTL._wrap_deg(_g_forward + CTL.DIR_ANGLE[_req])
+                _delta_p = CTL._wrap_deg(_target_p - _phi_p)
+                if abs(_delta_p) > 15.0:
+                    P = CTL.rotate_params(P, _delta_p)
+                    job.log("拟合后朝向校正：%s 请求 %s，拟合后偏差 %.0f 度，已转回"
+                            % (seg["segment_id"], _req, _delta_p))
+                    _face = dict(_face or {})
+                    _face["post_fit_deg"] = round(_delta_p, 1)
+
         _turn_net, _turn_back = CTL.turn_wobble(P)
         _is_turn = "turn" in (seg.get("text_gen_final") or "").lower()
         if _is_turn and _turn_back > 30.0:

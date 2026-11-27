@@ -1386,5 +1386,41 @@
   "best": "a person marches in place",
   "best_rate": 1.0,
   "tested_at": "2026-11-27 15:46:48"
+ },
+ "sidestep_right": {
+  "action_zh": "向右走（侧移）",
+  "phrasings": [
+   {
+    "text": "a person sidesteps to the right",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person sidesteps to the right",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-27 16:15:28"
+ },
+ "sidestep_left": {
+  "action_zh": "向左走（侧移）",
+  "phrasings": [
+   {
+    "text": "a person sidesteps to the left",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   }
+  ],
+  "best": "a person sidesteps to the left",
+  "best_rate": 1.0,
+  "tested_at": "2026-11-27 16:15:28"
  }
 }

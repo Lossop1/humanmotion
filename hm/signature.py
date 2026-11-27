@@ -23,6 +23,11 @@ RULES = [
     #                     mdm   前倾中位 10.2、后退中位 0.39
     (r"turns? around|turning around", "lean_median", 9.0, "转身应站直", "max"),
     (r"turns? around|turning around", "backward_m", 0.1, "转身不该边退边走", "max"),
+    # 侧移：身体朝向应与行进方向约 90 度；"walks to the right" 实测只有 4–12 度（直走）
+    (r"sidesteps? to the (left|right)", "facing_travel_deg", 60.0,
+     "侧移应侧着走（朝向与行进约 90 度）", "min"),
+    (r"sidesteps? to the (left|right)", "facing_travel_deg", 120.0,
+     "侧移不该转过身走", "max"),
     # 举手：校准后不可分（正对照最小 0.065 vs 负对照最大 0.139，弯腰时手腕也会相对抬升），
     # 因此不设规则，量保留在签名里供排序参考。
 
@@ -124,6 +129,16 @@ def signature(J):
     fwd[1] = 0.0
     nf = float(np.linalg.norm(fwd))
     fwd = fwd / nf if nf > 1e-9 else np.array([0.0, 0.0, 1.0])
+    # 身体朝向：髋线（左髋 1 → 右髋 2）的垂线；行进方向：根的水平位移
+    _hip = J[0, 2] - J[0, 1]
+    _body = np.array([_hip[2], 0.0, -_hip[0]])
+    _disp = (J[-1, 0] - J[0, 0])[[0, 2]]
+    if np.linalg.norm(_body) < 1e-6 or np.linalg.norm(_disp) < 1e-6:
+        facing_travel = 0.0
+    else:
+        _b = math.degrees(math.atan2(_body[0], _body[2]))
+        _t = math.degrees(math.atan2(_disp[0], _disp[1]))
+        facing_travel = float(abs((_t - _b + 180.0) % 360.0 - 180.0))
     rw = J[:, WRIST, :] - J[:, SHOULDER, :]
     return {
         "disp_m": float(horizon.max()),
@@ -139,6 +154,10 @@ def signature(J):
         "pelvis_up": pelvis_up,
         "pelvis_end_drop": pelvis_end_drop,
         "yaw_deg": float(abs(yaws[-1] - yaws[0])),
+        # 身体朝向与行进方向的夹角：侧移应约 90 度，直走约 0 度。
+        # 实测 "walks to the right" 夹角只有 4–12 度（其实是直走），
+        # "sidesteps to the right" 是 58–93 度——这个量能把两者分开。
+        "facing_travel_deg": facing_travel,
         "knee_range": float(max(knee) - min(knee)),
         "lean_delta": float(lean.max() - lean[0]),
         "lean_median": float(np.median(lean)),

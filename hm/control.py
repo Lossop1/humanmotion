@@ -60,6 +60,10 @@ def enforce_facing(J, direction, global_forward_deg):
     name = str(direction or "").strip().lower()
     if name not in DIR_ANGLE:
         return J, None
+    if name in ("left", "right"):
+        # 左右不能靠整体旋转伪造：旋转后身体仍然朝向行进方向，看起来还是直走。
+        # 实测 "walks to the right" 夹角只有 4–12 度，必须改用 sidesteps 提示词。
+        return J, {"requested": name, "skipped": "左右改用 sidestep 写法，不做整体旋转"}
     phi, dist = _disp_dir(J)
     if phi is None:
         return J, {"requested": name, "skipped": "位移过小（%.2f 米）" % dist}
@@ -86,7 +90,11 @@ def apply_terrain(J, ground_y):
     return J2, round(dy, 4)
 
 
+# 速度默认不改帧数：实测使用者把「快跑」看成「快放」（整段播快了），
+# 那正是帧数伸缩的副作用。现在只通过提示词里的 slowly/quickly 影响生成；
+# 需要时间伸缩时设 HM_SPEED_WARP=1。
 SPEED_FACTOR = {"slow": 1.25, "normal": 1.0, "fast": 0.8}
+_USE_WARP = __import__("os").environ.get("HM_SPEED_WARP", "0") == "1"
 
 
 def _mps(J, fps=20.0):
@@ -140,7 +148,7 @@ def apply_speed(J, speed):
     """
     name = str(speed or "").strip().lower()
     factor = SPEED_FACTOR.get(name)
-    if factor in (None, 1.0) or len(J) < 8:
+    if not _USE_WARP or factor in (None, 1.0) or len(J) < 8:
         return J, None
     before = _mps(J)
     n_new = max(8, int(round(len(J) * factor)))
@@ -176,3 +184,37 @@ def turn_wobble(params):
     net = float(yaw[-1] - yaw[0])
     back = float(np.max(np.maximum.accumulate(yaw) - yaw))
     return round(abs(net), 1), round(back, 1)
+
+
+def params_disp(params):
+    """参数空间里的水平位移方向（度）与距离。只看根平移。"""
+    P = np.asarray(params, dtype=np.float64)
+    if len(P) < 2:
+        return None, 0.0
+    d = P[-1, 82:85] - P[0, 82:85]
+    h = np.array([d[0], 0.0, d[2]])
+    n = float(np.linalg.norm(h))
+    if n < 0.05:
+        return None, n
+    return float(np.degrees(np.arctan2(h[0], h[2]))), n
+
+
+def rotate_params(params, ang_deg, pivot=None):
+    """把整段参数绕竖直轴转 ang_deg（根朝向与根平移一起转）。
+
+    为什么需要：朝向在执行层是「拟合前转关节」，但拟合（opt）会重新解根轨迹，
+    实测「向右走」拟合前 −90°、拟合后变成 0°（直走）——朝向被执行层改了回来。
+    所以在拟合后按参数再校一次。
+    """
+    from scipy.spatial.transform import Rotation as R
+    P = np.array(params, dtype=np.float64, copy=True)
+    a = np.radians(float(ang_deg))
+    c, sn = np.cos(a), np.sin(a)
+    piv = np.array(P[0, 82:85], dtype=np.float64) if pivot is None else np.asarray(pivot, dtype=np.float64)
+    for i in range(len(P)):
+        v = P[i, 82:85] - piv
+        P[i, 82:85] = piv + np.array([c * v[0] + sn * v[2], v[1], -sn * v[0] + c * v[2]])
+    rot = R.from_rotvec(P[:, 0:3])
+    new = R.from_euler("y", float(ang_deg), degrees=True) * rot
+    P[:, 0:3] = new.as_rotvec()
+    return P
