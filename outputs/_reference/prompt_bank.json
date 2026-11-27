@@ -1353,6 +1353,16 @@
   "action_zh": "原地踏步",
   "phrasings": [
    {
+    "text": "a person marches in place with high knees",
+    "models": {
+     "momask": {
+      "passed": 4,
+      "samples": 4,
+      "rate": 1.0
+     }
+    }
+   },
+   {
     "text": "a person marches in place",
     "models": {
      "momask": {
@@ -1383,9 +1393,9 @@
     }
    }
   ],
-  "best": "a person marches in place",
+  "best": "a person marches in place with high knees",
   "best_rate": 1.0,
-  "tested_at": "2026-11-27 15:46:48"
+  "tested_at": "2026-11-27 16:19:31"
  },
  "sidestep_right": {
   "action_zh": "向右走（侧移）",

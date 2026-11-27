@@ -413,6 +413,16 @@ def step_a08_a10(job, sb, ref):
             d = job.cand_dir(seg["segment_id"], int(c["candidate_id"].split("_")[-1]))
             F = np.load(d / "motion263.npy")
             J = np.asarray(to_joints.from_feats(F), dtype=np.float64)
+            # 原地约束：候选检查与实际装配必须用同一份变换，否则判据与成片不一致。
+            # 实测「原地高抬腿」候选往前走 2.24 米，装配层扣掉了、候选层没扣 → 被判可疑。
+            try:
+                from hm import control as _ctl
+                J, _drift = _ctl.apply_in_place(J, seg.get("text_gen_final") or "")
+                if _drift:
+                    job.log("A08 %s 原地约束：候选扣掉水平漂移 %.2f 米"
+                            % (c["candidate_id"], _drift))
+            except Exception:
+                pass
             np.save(d / "joints22.npy", J)
 
             hard = {"finite": bool(np.isfinite(J).all()),

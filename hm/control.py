@@ -218,3 +218,27 @@ def rotate_params(params, ang_deg, pivot=None):
     new = R.from_euler("y", float(ang_deg), degrees=True) * rot
     P[:, 0:3] = new.as_rotvec()
     return P
+
+
+def apply_in_place(J, prompt):
+    """提示词写了 in place 时，把整段的水平漂移线性扣掉。
+
+    实测：想要「原地高抬腿」只能写 "marches in place with high knees"
+    （膝角 111 度，但模型仍往前走 2.20 米）；写 "marches in place" 则膝角只有 56 度，
+    跟走路没差别。所以取前者并在这里把漂移扣掉——这句话本来就要求别往前走。
+    返回 (J2, 扣掉的漂移米数)。
+    """
+    if "in place" not in str(prompt or "").lower():
+        return J, 0.0
+    J = np.asarray(J, dtype=np.float64)
+    T = len(J)
+    if T < 3:
+        return J, 0.0
+    d = J[-1, 0] - J[0, 0]
+    drift = np.array([d[0], 0.0, d[2]])
+    n = float(np.linalg.norm(drift))
+    if n < 0.05:
+        return J, 0.0
+    u = np.linspace(0.0, 1.0, T)[:, None, None]
+    out = J - u * drift[None, None, :]
+    return out, round(n, 2)

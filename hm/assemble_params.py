@@ -150,7 +150,11 @@ def build(job, sb, verbose=True):
             _sid = _idx
         _ground = _profile.get(_sid, _terrain.get("start_y"))
         placed, _dy = CTL.apply_terrain(placed, _ground)
-        # 速度执行：slow/fast 用帧数伸缩实现（后端没有速度接口）
+        # 原地约束：提示词含 in place 时扣掉水平漂移（实测高抬腿写法会往前走 2.2 米）
+        placed, _drift = CTL.apply_in_place(placed, seg.get("text_gen_final") or "")
+        if _drift:
+            job.log("原地约束：%s 扣掉水平漂移 %.2f 米" % (seg["segment_id"], _drift))
+        # 速度执行：默认不伸缩帧数（HM_SPEED_WARP=1 才开）
         placed, _spd = CTL.apply_speed(placed, seg.get("speed"))
         if verbose:
             print("    拟合 %s ..." % seg["segment_id"], flush=True)

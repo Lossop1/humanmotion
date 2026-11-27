@@ -23,6 +23,11 @@ RULES = [
     #                     mdm   前倾中位 10.2、后退中位 0.39
     (r"turns? around|turning around", "lean_median", 9.0, "转身应站直", "max"),
     (r"turns? around|turning around", "backward_m", 0.1, "转身不该边退边走", "max"),
+    # 踏步：膝角要明显高于走路（走路中位 52 度），且不能走远。
+    # 实测 "marches in place" 只有 56 度（等于走路）；"with high knees" 是 93–111 度。
+    (r"marches?|marching", "knee_range", 80.0, "踏步应有明显抬腿（膝角 >80 度）", "min"),
+    (r"marches? in place|marching in place", "disp_m", 0.5, "原地踏步不该走远", "max"),
+
     # 侧移：身体朝向应与行进方向约 90 度；"walks to the right" 实测只有 4–12 度（直走）
     (r"sidesteps? to the (left|right)", "facing_travel_deg", 60.0,
      "侧移应侧着走（朝向与行进约 90 度）", "min"),
