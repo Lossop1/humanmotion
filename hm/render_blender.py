@@ -53,6 +53,8 @@ bs.inputs["Base Color"].default_value = (0.82, 0.76, 0.70, 1)
 bs.inputs["Roughness"].default_value = 0.55
 obj.data.materials.append(bm)
 
+# 影子必须开：实测使用者看不出跳跃「离地」，因为地面无影子、背景纯灰，
+# 高度差在画面上没有参照。开影子后脚离地会在地面留下明显空隙。
 gmat = bpy.data.materials.new("ground"); gmat.use_nodes = True
 gmat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.33, 0.35, 0.40, 1)
 gmat.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
@@ -145,7 +147,7 @@ if QUALITY == "fast":
     except AttributeError:
         pass
     try:
-        scn.eevee.use_shadows = False
+        scn.eevee.use_shadows = True
     except AttributeError:
         pass
     try:
@@ -168,7 +170,7 @@ if _smp:
         pass
 if _os.environ.get("HM_RENDER_SHADOW", "1") == "0":
     try:
-        scn.eevee.use_shadows = False
+        scn.eevee.use_shadows = True
     except AttributeError:
         pass
 print("  生效分辨率 %dx%d" % (scn.render.resolution_x, scn.render.resolution_y))
