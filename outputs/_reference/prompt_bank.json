@@ -393,6 +393,16 @@
   "action_zh": "跑",
   "phrasings": [
    {
+    "text": "a person jogs forward",
+    "models": {
+     "momask": {
+      "passed": 3,
+      "samples": 3,
+      "rate": 1.0
+     }
+    }
+   },
+   {
     "text": "a person runs forward",
     "models": {
      "momask": {
@@ -403,9 +413,10 @@
     }
    }
   ],
-  "best": "a person runs forward",
+  "best": "a person jogs forward",
   "best_rate": 1.0,
-  "tested_at": "2026-11-19 18:26:15"
+  "tested_at": "2026-11-27 23:36:15",
+  "note": "骨盆起伏 0.12 米；runs/sprints 实测 0.85–1.0 米（整段弹跳，使用者判浮空）"
  },
  "jog": {
   "action_zh": "慢跑",

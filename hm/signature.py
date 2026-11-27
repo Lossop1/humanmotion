@@ -21,6 +21,8 @@ RULES = [
     (r"\b(walks?|walking|runs?|running|sprints?|jogs?|steps?)\b\s+"
      r"(forward|backward|to the left|to the right)", "disp_m", 0.6, "应走出去", "min"),
     (r"turns? around|turning around", "yaw_deg", 45.0, "应转向", "min"),
+    # 跑不该整段弹跳：实测 runs/sprints 起伏 0.85–1.0 米，jogs 只有 0.12 米
+    (r"\b(runs?|running|sprints?|jogs?)\b", "pelvis_range", 0.25, "跑不该整段弹跳离地", "max"),
     # 换脚转身写法 steps around to face the other way 测得支撑脚滑动 0 mm/s，
     # 但有一半样本几乎不转（yaw 7 度）→ 判据保留，作为「如果用了这个写法就要真转」的守卫
     (r"steps? around to face", "yaw_deg", 90.0, "应转过来面对另一边", "min"),
@@ -162,6 +164,9 @@ def signature(J):
         "wrist_above": wrist_above,
         "pelvis_drop": pelvis_drop,
         "pelvis_up": pelvis_up,
+        # 整段骨盆的上下幅度：模型给的「跑」实测起伏 0.85–1.0 米（整段在弹跳），
+        # 正常跑 ~0.03–0.12 米。使用者判「跳了一下 / 还是有浮空」就是它。
+        "pelvis_range": float(J[:, PELVIS, 1].max() - J[:, PELVIS, 1].min()),
         "pelvis_end_drop": pelvis_end_drop,
         "yaw_deg": float(abs(yaws[-1] - yaws[0])),
         # 身体朝向与行进方向的夹角：侧移应约 90 度，直走约 0 度。

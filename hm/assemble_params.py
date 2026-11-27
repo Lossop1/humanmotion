@@ -231,7 +231,9 @@ def build(job, sb, verbose=True):
         gap = FJ.pose_gap(A_joint, B_joint)
         rate = max(FJ.bone_rate(pieces[i - 1], tail=True),
                    FJ.bone_rate(pieces[i], tail=False), 1e-6)
-        n = int(max(2, min(60, round(gap / rate))))
+        # 最小过渡 6 帧（0.3 秒）：实测使用者判「2 秒左右走转挥手过渡太快 不自然」，
+        # 那一段交界只有 7 帧且姿态差 61 度，看着像瞬间切换。
+        n = int(max(6, min(60, round(gap / rate))))
         n = int(min(n, max(2, FJ.DEFAULT_TRANSITION)) if gap <= FJ.EXTREME_GAP_DEG else n)
         # 过渡本身也有速度上限：姿态差再大，也不能一两帧甩完
         # 过渡速度上限不应用固定值，而应与两侧运动速度对比：
