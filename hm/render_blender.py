@@ -99,37 +99,68 @@ else:
 v_fov = 2 * math.atan(24.0 / (2 * cd.lens))
 dist = (height / 0.62) / (2 * math.tan(v_fov / 2))
 az = math.radians(38)
-offx, offy = math.sin(az) * dist, -math.cos(az) * dist
-# offx/offy 会在后面的校正里随 dist 更新
 dist = dist * DIST_SCALE
-for i in range(T):
-    cx, cy, cz = float(root[i, 0]), float(root[i, 1]), float(root[i, 2])
-    offx, offy = math.sin(az) * dist, -math.cos(az) * dist
-    eye = Vector((cx + offx, cy + offy, cz + height * 0.30))
-    aim = Vector((cx, cy, cz - height * 0.10))
-    cam.location = eye
-    cam.rotation_euler = (aim - eye).to_track_quat("-Z", "Y").to_euler()
-    cam.keyframe_insert("location", frame=i + 1)
-    cam.keyframe_insert("rotation_euler", frame=i + 1)
-# 用投影把人物高度校正到画面高度的目标比例。
-# 手算视场会错：Blender 的 sensor fit 与画幅比例有关，算出来的距离差三倍多。
+# 相机固定（不再逐帧跟人）：
+#   之前每帧把相机放到 root[i] 上方，等于镜头跟着人走 —— 画面上人始终在中央，
+#   位移只能从地面滑动看出来。使用者因此判「原地踏步还是前进了」「地板始终在跟着」
+#   （verify3 clip_07/clip_08 的标注）。改为固定机位，位移就能直接看见。
+#
+# 顺序很重要：先把距离算对、再插关键帧。
+# 之前是先按未校正的 dist 插了关键帧，之后的投影校正只改了当前状态没改关键帧，
+# 结果实际渲染用的是没校正的距离。
 from bpy_extras.object_utils import world_to_camera_view
 TARGET_FRAC = TARGET_ARG if TARGET_ARG else (0.80 if PIVOT == "upper" else 0.78)
 probe = int(T * 0.35)
-cx, cy, cz = (float(root[probe, 0]), float(root[probe, 1]), float(root[probe, 2]))
+_cx = float(np.median(root[:, 0]))
+_cy = float(np.median(root[:, 1]))
+_cz = float(np.median(root[:, 2]))
+_px = float(root[probe, 0])
+_py = float(root[probe, 1])
+_pz = float(root[probe, 2])
 frac = 0.0
 for _it in range(14):
-    eye = Vector((cx + math.sin(az) * dist, cy - math.cos(az) * dist, cz + height * 0.30))
-    aim = Vector((cx, cy, cz + aim_dz))
+    eye = Vector((_px + math.sin(az) * dist, _py - math.cos(az) * dist, _pz + height * 0.30))
+    aim = Vector((_px, _py, _pz + aim_dz))
     cam.location = eye
     cam.rotation_euler = (aim - eye).to_track_quat("-Z", "Y").to_euler()
     bpy.context.view_layer.update()
-    ph = world_to_camera_view(scn, cam, Vector((cx, cy, cz + aim_dz + body_h * 0.5)))
-    pl = world_to_camera_view(scn, cam, Vector((cx, cy, cz + aim_dz - body_h * 0.5)))
+    ph = world_to_camera_view(scn, cam, Vector((_px, _py, _pz + aim_dz + body_h * 0.5)))
+    pl = world_to_camera_view(scn, cam, Vector((_px, _py, _pz + aim_dz - body_h * 0.5)))
     frac = abs(ph.y - pl.y)
     if frac < 1e-6 or abs(frac - TARGET_FRAC) < 0.01:
         break
     dist = dist * (frac / TARGET_FRAC)
+
+# 再按「整段轨迹」扩一次取景：人走远时不能走出画面。
+# 只按某一帧取景的话，实测「原地踏步→向前走三步」最后只剩影子在画面里。
+eye = Vector((_cx + math.sin(az) * dist, _cy - math.cos(az) * dist, _cz + height * 0.30))
+aim = Vector((_cx, _cy, _cz + aim_dz))
+cam.location = eye
+cam.rotation_euler = (aim - eye).to_track_quat("-Z", "Y").to_euler()
+bpy.context.view_layer.update()
+for _it in range(8):
+    dev = 0.0
+    for _i in range(0, T, max(1, T // 12)):
+        _pt = Vector((float(root[_i, 0]), float(root[_i, 1]), float(root[_i, 2]) + aim_dz))
+        _pn = world_to_camera_view(scn, cam, _pt)
+        dev = max(dev, abs(_pn.x - 0.5), abs(_pn.y - 0.5))
+    if dev < 0.40:
+        break
+    dist = dist * (dev / 0.40)
+    eye = Vector((_cx + math.sin(az) * dist, _cy - math.cos(az) * dist, _cz + height * 0.30))
+    cam.location = eye
+    cam.rotation_euler = (aim - eye).to_track_quat("-Z", "Y").to_euler()
+    bpy.context.view_layer.update()
+
+# 距离定了再逐帧插关键帧（固定机位，位置都一样）
+for i in range(T):
+    offx, offy = math.sin(az) * dist, -math.cos(az) * dist
+    eye = Vector((_cx + offx, _cy + offy, _cz + height * 0.30))
+    aim = Vector((_cx, _cy, _cz + aim_dz))
+    cam.location = eye
+    cam.rotation_euler = (aim - eye).to_track_quat("-Z", "Y").to_euler()
+    cam.keyframe_insert("location", frame=i + 1)
+    cam.keyframe_insert("rotation_euler", frame=i + 1)
 print("  身高 %.2f m  取景 %s  相机距离 %.2f m  缩放 %.2f  投影占比 %.0f%%（目标 %.0f%%）"
       % (height, PIVOT, dist, DIST_SCALE, 100 * frac, 100 * TARGET_FRAC))
 print("  身高 %.2f m  相机距离 %.2f m  人物占画面高度 %.0f%%" % (height, dist, 100 * TARGET_FRAC))
