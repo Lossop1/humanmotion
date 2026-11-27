@@ -25,8 +25,21 @@ def load(name=None, device=None):
     return pipe
 
 
-def generate(prompts, lengths, name=None):
-    """一批提示词 → 一批特征。返回 [(T,263), ...]。"""
+def generate(prompts, lengths, name=None, seed=None):
+    """一批提示词 → 一批特征。返回 [(T,263), ...]。
+
+    seed 非空时先设随机种子：后端本身不接 seed（motius 的 infer_t2m 没有这个参数），
+    但采样噪声来自 torch 的全局随机状态，设了种子冷跑也能复现（实测见 tools/reproduce_check.py）。
+    """
+    if seed is not None:
+        import random
+        import torch
+        seed = int(seed)
+        random.seed(seed)
+        np.random.seed(seed % (2 ** 32))
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
     pipe = load(name)
     out = pipe.infer_t2m(list(prompts), [int(n) for n in lengths])
     res = []

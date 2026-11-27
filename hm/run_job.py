@@ -312,7 +312,9 @@ def step_a07(job, sb, k):
                      for i in range(len(cached["shapes"]))]
             hit = True
         else:
-            feats = generate.generate([prompt] * k, [n] * k, name=model)
+            _seed_env = __import__("os").environ.get("HM_SEED")
+            _seed = int(_seed_env) if _seed_env not in (None, "") else None
+            feats = generate.generate([prompt] * k, [n] * k, name=model, seed=_seed)
             hit = False
             if _cache.enabled():
                 import tempfile
