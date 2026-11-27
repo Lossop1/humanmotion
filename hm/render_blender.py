@@ -56,8 +56,20 @@ obj.data.materials.append(bm)
 # 影子必须开：实测使用者看不出跳跃「离地」，因为地面无影子、背景纯灰，
 # 高度差在画面上没有参照。开影子后脚离地会在地面留下明显空隙。
 gmat = bpy.data.materials.new("ground"); gmat.use_nodes = True
-gmat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.33, 0.35, 0.40, 1)
 gmat.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
+# 地面加棋盘格：纯色地面上「有没有位移」和「离地多高」都缺参照，
+# 实测使用者两次判「原地踏步像往前走」「跳跃看不出离地」。
+# 棋盘格每格 0.5 米，横向位移与起跳高度都能直接数格子。
+_nt = gmat.node_tree
+_chk = _nt.nodes.new("ShaderNodeTexChecker")
+_chk.inputs["Scale"].default_value = 2.0
+_chk.inputs["Color1"].default_value = (0.42, 0.44, 0.49, 1)
+_chk.inputs["Color2"].default_value = (0.30, 0.32, 0.37, 1)
+_map = _nt.nodes.new("ShaderNodeMapping")
+_tex = _nt.nodes.new("ShaderNodeTexCoord")
+_nt.links.new(_tex.outputs["Object"], _map.inputs["Vector"])
+_nt.links.new(_map.outputs["Vector"], _chk.inputs["Vector"])
+_nt.links.new(_chk.outputs["Color"], _nt.nodes["Principled BSDF"].inputs["Base Color"])
 
 gy = float(V[..., 2].min())
 root = V[:, 0, :]
