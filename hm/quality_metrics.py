@@ -176,6 +176,22 @@ def junction_dynamics(J, junctions):
     return out
 
 
+def rot_spike(params):
+    """单帧最大关节转动（度/帧）。人工标定锚点：big_s08 在 13.7 秒被判「有扭曲」，
+    对应第 274 帧转动 107.7 度/帧；同批 30 个任务里 >30 度的有 5 个、>60 度的 2 个。"""
+    from scipy.spatial.transform import Rotation as R
+    P = np.asarray(params, dtype=np.float64)
+    if len(P) < 2:
+        return {"max_deg": 0.0, "frames_over_30": 0, "frames_over_60": 0}
+    rv = P[:, 0:72].reshape(len(P), 24, 3)
+    a = R.from_rotvec(rv[1:].reshape(-1, 3))
+    b = R.from_rotvec(rv[:-1].reshape(-1, 3))
+    rot = np.degrees((a * b.inv()).magnitude().reshape(len(P) - 1, 24).max(axis=1))
+    return {"max_deg": round(float(rot.max()), 1),
+            "frames_over_30": int((rot > 30).sum()),
+            "frames_over_60": int((rot > 60).sum())}
+
+
 def self_intersection(J):
     """胶囊自相交：返回 (帧数占比, 最大插入深度 m, 涉及的骨头对)。
 

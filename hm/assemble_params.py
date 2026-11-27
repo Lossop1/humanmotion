@@ -267,7 +267,8 @@ def build(job, sb, verbose=True):
                "foot_height_min": float(min(J[:, 10, 1].min(), J[:, 11, 1].min())),
                "root_path_length": float(step.sum()),
                "root_step_median": float(np.median(step)),
-               "ground_align_dy_m": round(float(_dy), 4)}
+               "ground_align_dy_m": round(float(_dy), 4),
+               "rot_spike": __import__("hm.quality_metrics", fromlist=["rot_spike"]).rot_spike(params)}
     bj = {"job_id": getattr(job, "job_id", "?"), "segments": bounds,
           "junctions": junctions, "total_frames": total, "metrics": metrics,
           "fps": 20, "assembly": "param_space"}
