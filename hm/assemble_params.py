@@ -136,7 +136,10 @@ def build(job, sb, verbose=True):
         if _g_forward is None:
             _phi0, _d0 = CTL._disp_dir(placed)
             if _phi0 is not None:
-                _g_forward = _phi0
+                # 世界前方不能直接取第一段的自然方向，否则第一段请求 backward 时
+                # 目标 = 自己+180°，会被自己转 180°，把正确的后退改成前进。
+                _req0 = str(seg.get("facing") or seg.get("direction") or "").strip().lower()
+                _g_forward = _phi0 - CTL.DIR_ANGLE[_req0] if _req0 in CTL.DIR_ANGLE else _phi0
         placed, _face = CTL.enforce_facing(placed, seg.get("facing") or seg.get("direction"),
                                        _g_forward if _g_forward is not None else 0.0)
         # 地形执行：把本段整体对齐到规划给出的地面高度

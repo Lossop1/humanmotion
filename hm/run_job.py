@@ -240,8 +240,18 @@ def step_a06(job, sb):
                          "forward", "backward", "left", "right", "place", "from", "at", "both"}
                 return {w for w in re.findall(r"[a-z]+", str(x).lower())
                         if w not in _stop and len(w) > 2}
+
+            def _dirs(x):
+                """行进方向词。身体侧的 left/right（left hand）不算方向。"""
+                y = re.sub(r"(right|left)\s+(hand|leg|arm|fist|foot|knee)", " ", str(x).lower())
+                return {w for w in re.findall(r"[a-z]+", y)
+                        if w in {"forward", "backward", "left", "right", "back", "around", "circle"}}
+
             _subset = bool(tested) and _tok(tested) <= _tok(prompt)
-            if (tested and not compound and _subset and status == "supported"
+            # 方向必须一致：实测「walks backward」被换成能力表里的「walks forward」，
+            # 之后装配再整体转 180°，画面上就是「普通前进」——看起来完全不后退。
+            _dir_ok = bool(tested) and _dirs(tested) == _dirs(prompt)
+            if (tested and not compound and _subset and _dir_ok and status == "supported"
                     and tested.lower() != prompt.lower()):
                 final, version = tested, "capability_tested_prompt"
                 reused += 1
