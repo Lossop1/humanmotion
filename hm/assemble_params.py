@@ -236,6 +236,17 @@ def build(job, sb, verbose=True):
         raise SystemExit("帧数核对失败：%d vs %d" % (total, len(params)))
 
     J, V = joints_of_params(params)
+
+    # 贴地校正：按「网格最低点」而不是关节最低点对齐地面。
+    # 实测（逐帧网格法）：按关节对齐时皮肤比关节低 2–5 厘米，
+    # 30 个任务里每千帧有 768 帧有顶点低于地面——不是动作错，是对齐口径错了。
+    _ground0 = float((sb.get("terrain") or {}).get("start_y") or 0.0)
+    _dy = _ground0 - float(np.min(V[:, :, 1]))
+    if abs(_dy) > 1e-4:
+        params = np.array(params, dtype=np.float64, copy=True)
+        params[:, TRANSL[0] + 1] += _dy
+        J, V = joints_of_params(params)
+
     L = jobmod.bone_lengths(J)
     rel = np.abs(L - L.mean(axis=0)) / np.maximum(L.mean(axis=0), 1e-9)
     tr_xy = J[:, 0, [0, 2]]
@@ -244,7 +255,8 @@ def build(job, sb, verbose=True):
                "bone_length_rel_spread_max": float(rel.max()),
                "foot_height_min": float(min(J[:, 10, 1].min(), J[:, 11, 1].min())),
                "root_path_length": float(step.sum()),
-               "root_step_median": float(np.median(step))}
+               "root_step_median": float(np.median(step)),
+               "ground_align_dy_m": round(float(_dy), 4)}
     bj = {"job_id": getattr(job, "job_id", "?"), "segments": bounds,
           "junctions": junctions, "total_frames": total, "metrics": metrics,
           "fps": 20, "assembly": "param_space"}
