@@ -188,7 +188,14 @@ def build(job, sb, verbose=True):
                 _rs = _rs_ik
         pieces.append(placed)
         seg_params.append(P)
+        _turn_net, _turn_back = CTL.turn_wobble(P)
+        _is_turn = "turn" in (seg.get("text_gen_final") or "").lower()
+        if _is_turn and _turn_back > 30.0:
+            job.log("转身回摆：%s 净转 %.0f 度、回退 %.0f 度（>30 度像倒放，标记可疑）"
+                    % (seg["segment_id"], _turn_net, _turn_back))
         bounds.append({"segment_id": seg["segment_id"], "candidate": "cand_%02d" % n,
+                       "turn_net_deg": _turn_net, "turn_back_deg": _turn_back,
+                       "turn_wobble": bool(_is_turn and _turn_back > 30.0),
                        "frames": int(len(placed)), "align_yaw_deg": round(dyaw, 2),
                        "facing": _face, "terrain_dy_m": _dy, "ground_y": _ground,
                        "speed": _spd, "rot_spike_deg": _rs["max_deg"],

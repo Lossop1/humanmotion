@@ -157,3 +157,22 @@ def apply_speed(J, speed):
     return J2, info
 
 
+def turn_wobble(params):
+    """转身的回摆量（度）：用参数里的根旋转算，不受脊柱朝向噪声影响。
+
+    实测「原地转身两圈」：净转 37 度、回退 56 度 → 画面上像倒放。
+    返回 (净转角, 最大回退角)。
+    """
+    from scipy.spatial.transform import Rotation as R
+    P = np.asarray(params, dtype=np.float64)
+    if len(P) < 3:
+        return 0.0, 0.0
+    rv = P[:, 0:3]
+    r = R.from_rotvec(rv.reshape(-1, 3))
+    # 取绕竖直轴的分量：把旋转作用到 +z 上，看方位角
+    fwd = r.apply(np.array([0.0, 0.0, 1.0]))
+    yaw = np.degrees(np.arctan2(fwd[:, 0], fwd[:, 2]))
+    yaw = np.degrees(np.unwrap(np.radians(yaw)))
+    net = float(yaw[-1] - yaw[0])
+    back = float(np.max(np.maximum.accumulate(yaw) - yaw))
+    return round(abs(net), 1), round(back, 1)
