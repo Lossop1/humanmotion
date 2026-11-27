@@ -57,6 +57,15 @@ INSEPARABLE = [
     # speed_tail 随片段长度漂移：短片段判不过，长片段什么都判得过。
     (r"stands? still|stops? (walking|moving)|com(e|es) to a stop|slow(s)? down and stops?",
      "停住：末段速度随片段长度漂移（44/80/119 帧差异极大），分不开"),
+    # 起身：试过 pelvis_up / pelvis_drop / pelvis_end_drop / lean_delta / knee_range 五个量，
+    # 正负全部重叠（例如 pelvis_up 正 0.003–0.075 vs 负 0.000–0.056）→ 分不开
+    (r"stands? (up|upright)|straightens? (up|his|her)|gets? to (his|her) feet|rises? from",
+     "起身：骨盆升高与弯腰/走路重叠（正 0.003–0.075 vs 负 0.000–0.056），分不开"),
+    # 喝水：需要手到嘴的距离与头部朝向，SMPL 22 关节没有嘴部点，手-头距离与「摸头/擦汗」重叠
+    (r"drinks?|cup", "喝水：没有嘴部点，手到头的距离与摸头/举手重叠，分不开"),
+    # 看/转头：22 关节里没有脖子/头部朝向自由度（yaw 只有根），头跟着身体走，量不出「头朝哪」
+    (r"looks? (to the|at|left|right|up|down)|turns? (his|her) head", 
+     "看/转头：22 关节没有头部朝向自由度，头跟身体走，量不出看的方向"),
 ]
 
 
