@@ -120,7 +120,24 @@ def step_a03(job, sb):
         prompt = seg.get("text_gen") or ""
         low = prompt.lower()
         hit = _cap_lookup(prompt)
-        if hit is not None:
+        _dead = __import__("hm.signature", fromlist=["dead_end_in"]).dead_end_in(
+            "%s %s" % (prompt, seg.get("label") or ""))
+        # 中文原文也要查：实测关缓存时大模型把「爬行」换成了「sneaks forward slowly」，
+        # 英文里已经没有 crawl，只有回看原文才拦得住。
+        _src = str(seg.get("source_text") or "")
+        for _zh, _en in (("爬行", "crawl"), ("匍匐", "crawl"), ("蹲", "crouch"),
+                         ("躺", "lie"), ("卧", "lie"), ("跳舞", "dance"), ("舞蹈", "dance"),
+                         ("跪", "kneel")):
+            if _zh in _src:
+                _dead = _en
+                break
+        if _dead:
+            # 死路动作必须最先判：实测关缓存时大模型会把「爬行」落到一个能做的写法上，
+            # 先查能力表就会得到 supported，于是出片并报成功（守门 dead_end 因此失败过两次）。
+            status = "unsupported"
+            # 文案要与 main 的「这句话做不了」判据对齐（它认「不支持 / 0/4 / 复合」）
+            reason = "不支持：死路动作（%s），实测通过率 0" % _dead
+        elif hit is not None:
             status, model, zh = hit
             reason = "能力表：%s 最佳后端 %s" % (zh or "-", model)
         elif (_bank := __import__("hm.prompt_variants", fromlist=["bank_rate"]).bank_rate(prompt)) \

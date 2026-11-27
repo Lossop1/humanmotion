@@ -33,9 +33,8 @@ RULES = [
     (r"crouch|squat|kneel", "pelvis_drop", 0.18, "应降低重心", "min"),
     # 跳：原来写在 check() 的特例里，--explain 的「能判什么」看不到，挪进规则表
     (r"jumps?|jumping|hops?", "pelvis_up", 0.08, "应往上跳起", "min"),
-    # 停住：看末段速度（校准：站着 0.02、原地踏步 0.17、慢跑 0.46、走 1.17 米/秒）
-    (r"stands? still|stops? (walking|moving)|com(e|es) to a stop|slow(s)? down and stops?",
-     "speed_tail", 0.10, "末段应停住", "max"),
+    # 停住规则已否证：speed_tail 随片段长度漂移（见 INSEPARABLE 与目标树 G39）。
+    # 44 帧时「走然后停住」末速 1.19–1.64；80 帧时 0.01–0.05；119 帧时连纯走也只有 0.02。
     # 踢腿：校准于正对照「kicks forward」最小 0.552、负对照（走/站/原地踏步）最大 0.492
     (r"kicks? forward|kicking forward|does a (front|side) kick", "kick_reach", 0.52,
      "脚应向前踢出", "min"),
@@ -53,6 +52,11 @@ INSEPARABLE = [
     (r"pushes?|pushes? forward|pulls?", "推拉类：正负对照重叠（-0.29 vs 0.22）"),
     (r"picks? up|reaching|reaches", "捡取类：无校准量，幅度与弯腰重叠"),
     (r"performs? a series|a set of movements", "复合描述：不是一个具体动作"),
+    # 停住曾被当作可判（末段速度 ≤0.10）。实测否证：同一句「走然后停住」在 44 帧时
+    # 末速 1.19–1.64，80 帧时 0.01–0.05，119 帧时连纯走也只有 0.02——
+    # speed_tail 随片段长度漂移：短片段判不过，长片段什么都判得过。
+    (r"stands? still|stops? (walking|moving)|com(e|es) to a stop|slow(s)? down and stops?",
+     "停住：末段速度随片段长度漂移（44/80/119 帧差异极大），分不开"),
 ]
 
 
