@@ -97,14 +97,21 @@ run.log                      逐步日志
 
 | 变量 | 默认 | 作用 |
 |---|---|---|
-| `HM_DEPS` | 仓库根 | 模型、数据集、外部仓库所在目录 |
+| `HM_NO_CACHE` | 0 | 关内容缓存；改词表/提示词后必须设 1，否则同一句会拿到旧规划 |
+| `HM_SEED` | 无 | 生成种子；复现同一批候选时用 |
+| `HM_FORCE_BACKEND` | 无 | 强制后端（momask / mdm） |
+| `HM_FIT_METHOD` | opt | 拟合方式（opt 或 ik） |
+| `HM_TRANS_CAP` | 内置 | 交界过渡帧上限 |
+| `HM_SMOOTH_FILTER` | 0 | 候选平滑过滤；开启会触发重生成，很慢 |
+| `HM_SPEED_WARP` | 0 | 是否用帧数伸缩表达快慢；默认关（关掉才不会像快放） |
+| `HM_RENDER_RES` | 1080 | 渲染分辨率 |
+| `HM_RENDER_SAMPLES` | 内置 | 渲染采样数 |
+| `HM_DEBUG_FACE` | 0 | 打印朝向校正的调试值 |
+| `HM_DEPS` | 仓库根 | 模型、数据集所在目录 |
 | `HM_BLENDER` | 自动探测 | Blender 可执行文件 |
-| `HM_OUT` | `<repo>/runs` | 输出根目录 |
-| `HM_NO_CACHE` | `0` | `1` 绕过内容寻址缓存（做对照实验时用） |
-| `HM_PLAN_FALLBACK` | `0` | `1` 强制用规则兜底规划（量化没有大模型时的退化） |
-| `HM_DEGRADE` | `drop` | 有段失败时的策略：`drop` / `clip` / `abort` |
-| `HM_RENDER_QUALITY` | `fast` | 渲染质量；`HM_RENDER_RES`、`HM_RENDER_SAMPLES` 可单独覆盖 |
-| `DEEPSEEK_API_KEY` | 无 | 规划器密钥 |
+| `HM_OUT` | `outputs` | 输出根目录 |
+| `DEEPSEEK_API_KEY` | 无 | 规划用大模型的密钥；缺失时退规则兜底 |
+
 
 ## 开发
 

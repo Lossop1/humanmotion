@@ -125,3 +125,58 @@ def turn_with_feet(J, delta_deg, mask=None, fps=20):
         J[t:] = _rot_y(J[t:], step, pivot)
     return J, {"turned_deg": round(float(delta_deg), 1),
                "pivot": "支撑脚 %d 帧 / 根 %d 帧" % (used_feet, T - 1 - used_feet)}
+
+
+def mesh_foot_slide(verts, thr=0.02):
+    """网格级脚部滑动（毫米/帧）：取每帧最低 thr 米内的顶点作为落地部分。
+
+    为什么需要：实测同一段动作，踝级滑动 2–6 毫米/帧，网格级 8–13 毫米/帧，
+    使用者看到的「腿在平移」是网格这一层，踝级度量把它低估了 3–4 倍。
+    """
+    V = np.asarray(verts, dtype=np.float64)
+    gy = float(V[..., 1].min())
+    prev = None
+    vals = []
+    for t in range(len(V)):
+        low = V[t][V[t][..., 1] < gy + thr]
+        if len(low) < 8:
+            prev = None
+            continue
+        c = low.mean(axis=0)[[0, 2]]
+        if prev is not None:
+            vals.append(float(np.linalg.norm(c - prev)))
+        prev = c
+    return float(np.median(vals) * 1000.0) if vals else 0.0
+
+
+def pin_mesh(verts, params, thr=0.02, max_fix_m=0.03):
+    """在网格层钉脚：把支撑期脚部的水平漂移，从根平移里扣掉。
+
+    与 pin_contacts 的区别：那个钉的是踝关节，实测留着 8–13 毫米/帧的网格滑动；
+    这里直接量网格落地部分，改的是 SMPL 参数的根平移（82:85），不改关节角。
+    """
+    V = np.asarray(verts, dtype=np.float64)
+    P = np.array(params, dtype=np.float64, copy=True)
+    T = min(len(V), len(P))
+    if T < 3:
+        return P, {"slide_before_mm": 0.0, "slide_after_mm": 0.0, "fixed_frames": 0}
+    before = mesh_foot_slide(V[:T], thr=thr)
+    gy = float(V[..., 1].min())
+    prev = None
+    total = np.zeros(2)
+    fixed = 0
+    for t in range(T):
+        low = V[t][V[t][..., 1] < gy + thr]
+        if len(low) < 8:
+            prev = None
+            continue
+        c = low.mean(axis=0)[[0, 2]]
+        if prev is not None:
+            corr = -np.clip(c - prev, -max_fix_m, max_fix_m)
+            total += corr
+            P[t:, 82] += corr[0]
+            P[t:, 84] += corr[1]
+            fixed += 1
+        prev = c
+    return P, {"slide_before_mm": round(before, 1), "fixed_frames": fixed,
+               "fixed_m": round(float(np.linalg.norm(total)), 3)}

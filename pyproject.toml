@@ -20,8 +20,16 @@ gpu = ["torch", "smplx"]
 render = ["opencv-python", "pillow", "matplotlib"]
 dev = ["pytest>=8", "ruff>=0.5"]
 
+[project.scripts]
+# 唯一用户入口：安装后 `hm` 即 hm.cli
+hm = "hm.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["hm*"]
+
+[tool.setuptools.package-data]
+# 标定数据必须在包里：非 editable 安装时 paths.ref() 才不会退到不存在的旧路径
+hm = ["../calibration/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
