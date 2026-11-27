@@ -135,7 +135,7 @@ def build(job, sb, verbose=True):
             placed, dyaw = FJ.align_pair(prev, J)
 
         placed, _face = CTL.enforce_facing(placed, seg.get("facing") or seg.get("direction"),
-                                       _g_forward)
+                                       _g_forward, prompt=seg.get("text_gen_final") or "")
         # 地形执行：把本段整体对齐到规划给出的地面高度
         # 地形按「原段号」取高度：合并会让段序号错位，不能用循环下标
         try:
@@ -144,6 +144,17 @@ def build(job, sb, verbose=True):
             _sid = _idx
         _ground = _profile.get(_sid, _terrain.get("start_y"))
         placed, _dy = CTL.apply_terrain(placed, _ground)
+        # 脚部接触约束：把支撑脚钉住（实测候选滑动 4–5 mm/帧、位移只少 2%）
+        # 旋转在前、钉脚在后 → 转身变成「绕着支撑脚转」，而不是整体刚性旋转
+        try:
+            from hm import contact as _contact
+            placed, _pin = _contact.pin_contacts(placed)
+            if _pin.get("frames"):
+                job.log("钉脚：%s 支撑 %d 帧，滑动 %.0f→%.0f mm/帧，扣掉漂移 %.2f 米"
+                        % (seg["segment_id"], _pin["frames"], _pin.get("slide_before_mm", 0),
+                           _pin.get("slide_after_mm", 0), _pin.get("fixed_m", 0)))
+        except Exception as _e:
+            job.log("钉脚跳过：%s" % str(_e)[:60])
         # 原地约束：提示词含 in place 时扣掉水平漂移（实测高抬腿写法会往前走 2.2 米）
         placed, _drift = CTL.apply_in_place(placed, seg.get("text_gen_final") or "")
         if _drift:

@@ -65,7 +65,7 @@ def body_travel_deg(J):
     return float(abs((t - b + 180.0) % 360.0 - 180.0))
 
 
-def enforce_facing(J, direction, global_forward_deg):
+def enforce_facing(J, direction, global_forward_deg=0.0, prompt=""):
     """把这一段的世界行进方向转到请求的方向上，返回 (J2, info)。
 
     为什么整体旋转有效：段内姿态与运动的关系不变（侧移还是侧移、倒退还是倒退），
@@ -96,7 +96,17 @@ def enforce_facing(J, direction, global_forward_deg):
         return J, {"requested": name, "skipped": "位移过小（%.2f 米）" % dist}
     target = _wrap_deg(global_forward_deg + DIR_ANGLE[name])
     delta = _wrap_deg(target - phi)
-    J2 = _rot_y(J, delta) if abs(delta) > 1e-6 else J
+    # 大角度换向（>20 度）绕支撑脚转，避免「站在转盘上」整体旋转；
+    # 小角度修正仍绕自身，避免把正常走路的步态掰歪。
+    _is_turn = "turn" in str(prompt or "").lower()
+    if _is_turn and abs(delta) > 20.0:
+        try:
+            from hm import contact as _contact
+            J2, _tinfo = _contact.turn_with_feet(J, delta)
+        except Exception:
+            J2 = _rot_y(J, delta)
+    else:
+        J2 = _rot_y(J, delta) if abs(delta) > 1e-6 else J
     return J2, {"requested": name,
                 "before_deg": round(_wrap_deg(phi - global_forward_deg), 1),
                 "target_deg": round(DIR_ANGLE[name], 1),
