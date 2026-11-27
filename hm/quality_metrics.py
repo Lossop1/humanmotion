@@ -111,6 +111,35 @@ def accel_ratio(J, window=6):
     return round(float(np.mean(mid)) / mean_a, 2) if len(mid) else None
 
 
+def junction_dynamics(J, junctions):
+    """逐交界看「过渡内部」与「段内部」的加速度比。
+
+    junctions: [{"transition_frames": n}, ...]，按拼接顺序给出。
+    过渡帧位置由段长与过渡长累加得到（与 assemble_params 的拼接方式一致）。
+    """
+    P = np.asarray(J, dtype=np.float64)
+    if len(P) < 6 or not junctions:
+        return []
+    v = np.linalg.norm(np.diff(P, axis=0), axis=2)[:, 1:]
+    a = np.abs(np.diff(v, axis=0))            # 长度 len(P)-2
+    seg_total = len(P) - sum(int(j["transition_frames"]) for j in junctions)
+    seg_each = seg_total / max(len(junctions) + 1, 1)
+    out = []
+    cursor = seg_each
+    for j in junctions:
+        n = int(j["transition_frames"])
+        lo = max(0, int(cursor) - 1)
+        hi = min(len(a), lo + max(n, 2))
+        mid = a[lo:hi]
+        outside = np.concatenate([a[:lo], a[hi:]]) if hi < len(a) else a[:lo]
+        ratio = float(np.mean(mid)) / (float(np.mean(outside)) + 1e-9) if len(mid) and len(outside) else None
+        out.append({"transition_frames": n,
+                    "accel_ratio_inside_vs_outside": None if ratio is None else round(ratio, 2),
+                    "pose_gap_deg": j.get("pose_gap_deg")})
+        cursor += seg_each + n
+    return out
+
+
 def self_intersection(J):
     """胶囊自相交：返回 (帧数占比, 最大插入深度 m, 涉及的骨头对)。
 

@@ -57,9 +57,13 @@ def main():
         gp = QM.ground_penetration(J, g)
         fs = QM.foot_slide(J)
         ar = QM.accel_ratio(J)
+        bj_p = d / "assembled" / "bounds.json"
+        jd = []
+        if bj_p.exists():
+            jd = QM.junction_dynamics(J, json.loads(bj_p.read_text(encoding="utf-8")).get("junctions", []))
         si = QM.self_intersection(J)
         rows.append({"job": d.name, "frames": int(len(J)), "ground": g,
-                     "ground_pen": gp, "foot_slide": fs, "accel_ratio": ar, "self_intersect": si})
+                     "ground_pen": gp, "foot_slide": fs, "accel_ratio": ar, "junction_dynamics": jd, "self_intersect": si})
         print("  %-16s %4d 帧 穿地 %2d 帧/深 %.3f 米｜脚滑中位 %s mm/帧｜加速度比 %s｜自交 %d 帧(%.1f%%)"
               % (d.name, len(J), gp["frames_below"], gp["max_depth_m"],
                  fs.get("median_mm_per_frame"), ar, si["frames_hit"], 100.0 * si["hit_ratio"]))
