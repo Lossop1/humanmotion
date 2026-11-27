@@ -239,6 +239,28 @@ def _enum(v, allowed):
     return t if t in allowed else None
 
 
+DIR_HINTS = (
+    ("向左|朝左|往左|to the left|walk left|left side", "left"),
+    ("向右|朝右|往右|to the right|walk right|right side", "right"),
+    ("向后|倒退|退后|backward|backwards|back up", "backward"),
+    ("向前|往前走|前进|forward|ahead", "forward"),
+)
+
+
+def _infer_direction(seg):
+    """direction 缺失时按 label/prompt 补一个。
+
+    为什么需要：实测「向左走」这一段大模型给了 prompt=walks to the left 但 direction=null，
+    装配层拿不到方向就没法执行（E4）。这里是确定性兜底，不依赖大模型再答一次。
+    """
+    text = ("%s %s" % (seg.get("label") or "", seg.get("prompt") or "")).lower()
+    for pat, name in DIR_HINTS:
+        import re as _re
+        if _re.search(pat, text):
+            return name
+    return None
+
+
 def plan(sentence):
     """一句中文 → (段落列表, 过渡列表, 地形)。
 
@@ -293,6 +315,10 @@ def plan(sentence):
                               ("near", "front", "behind", "left", "right", "toward", "away")),
             "speed": _enum(s.get("speed"), ("slow", "normal", "fast")),
         })
+        if segs[-1]["direction"] is None:
+            _inf = _infer_direction(segs[-1])
+            if _inf:
+                segs[-1]["direction"] = _inf
     if not segs:
         raise ValueError("LLM 没有给出任何段落")
 

@@ -110,7 +110,9 @@ source（原文片段）
 
 prompt（交给生成模型的英文）
 7 每条 prompt 逐字取自 <capability_list> 里的写法，只允许再补方向与快慢。
-8 方向写在 prompt 里（forward / backward / to the left / to the right / in place / in a circle）。
+8 每一段都必须填 direction，取值 forward / backward / left / right / in_place / circle，
+  并且必须从该段自己的原文判断，不能沿用上一段：原文说「向左走」这段就是 left。
+  方向同时写进 prompt（forward / backward / to the left / to the right / in place）。
 9 一条 prompt 只写一个动作；原文里的对象（面团、椅子、虎）不写进 prompt，只写进 object 与 label。
 10 原文动作不在 <capability_list> 里时，选最接近的可用动作，并在 label 前加「近似：」。
 

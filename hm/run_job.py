@@ -534,7 +534,13 @@ def merge_short_segments(job, sb, limit_frames=56):
             # 合起来变成一句长句，模型只能给出泛化动作（实测武松遇虎那段）
             _compound = (" and " in (a.get("text_gen_final") or "").lower()
                          or " and " in (b.get("text_gen_final") or "").lower())
-            if not _compound and (fa <= limit_frames and fb <= limit_frames
+            # 方向不同的两段不合并：合并后只能保留一个方向约束。
+            # 实测「向前走→向左走」被合并后左转约束消失（目标树 E4 局限 1）。
+            _dir_a = str(a.get("facing") or "").strip().lower()
+            _dir_b = str(b.get("facing") or "").strip().lower()
+            _dir_conflict = bool(_dir_a and _dir_b and _dir_a != _dir_b
+                                 and "in_place" not in (_dir_a, _dir_b))
+            if not _compound and not _dir_conflict and (fa <= limit_frames and fb <= limit_frames
                                   or (fa + fb) <= 120):
                 pa = (a.get("text_gen_final") or "").strip()
                 pb = (b.get("text_gen_final") or "").strip()
