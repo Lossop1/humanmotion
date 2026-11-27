@@ -146,3 +146,11 @@ def test_speed_word_added_once():
         "a person turns around in place slowly"
     assert apply_speed_word("a person runs forward fast", "fast") == "a person runs forward fast"
     assert apply_speed_word("a person walks forward", "normal") == "a person walks forward"
+
+
+def test_sidestep_not_judged_as_walk():
+    """侧移不能被走路判据命中：\bsteps?\b 的边界是关键（sidesteps 里没有边界）。"""
+    from hm import signature
+    sig = {"disp_m": 0.3, "facing_travel_deg": 90.0, "knee_range": 15.0}
+    ok, bad, _detail = signature.check("a person sidesteps to the left", sig)
+    assert ok is not False, "侧移被判成「没走出去」：%s" % (bad,)

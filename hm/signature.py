@@ -16,7 +16,9 @@ WRIST = 21
 PELVIS = 0
 
 RULES = [
-    (r"(walks?|walking|runs?|running|sprints?|jogs?|steps?)\s+"
+    # 词边界必须是 \b：否则 "sidesteps to the left" 会被 \bsteps?\s+ 命中，
+    # 于是侧移被套上「应该走出去 ≥0.6 米」的走路判据，被判可疑（实测 verify_02/03 都栽在这）。
+    (r"\b(walks?|walking|runs?|running|sprints?|jogs?|steps?)\b\s+"
      r"(forward|backward|to the left|to the right)", "disp_m", 0.6, "应走出去", "min"),
     (r"turns? around|turning around", "yaw_deg", 45.0, "应转向", "min"),
     # 阈值取实测分离点：momask 前倾中位 2.0、最大 7.6、后退 ≤-0.01；
