@@ -10,6 +10,7 @@
     python -m tools.make_ledger > docs/账本.md
 """
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -58,7 +59,7 @@ def round_stats(path):
 def coverage(rnd_tag):
     """用签名重算某一轮的可判覆盖（可疑/无法判）。"""
     from hm import signature
-    tot = passed = sus = unk = 0
+    tot = passed = sus = unk = rule_seg = rule_ok = 0
     for d in sorted(ROOT.joinpath("outputs").glob("big_s*_%s" % rnd_tag)):
         sp = d / "storyboard.json"
         if not sp.exists():
@@ -80,7 +81,13 @@ def coverage(rnd_tag):
                 passed += 1
             else:
                 sus += 1
-    return {"judgeable": passed + sus, "total": tot, "passed": passed, "suspect": sus, "unknown": unk}
+            # 该段是否落在「有判据的类别」：提示词能匹配到任何一条规则
+            if any(re.search(r[0], (seg.get("text_gen_final") or "").lower()) for r in signature.RULES):
+                rule_seg += 1
+                if ok is not None:
+                    rule_ok += 1
+    return {"judgeable": passed + sus, "total": tot, "passed": passed, "suspect": sus,
+            "unknown": unk, "rule_segments": rule_seg, "rule_judgeable": rule_ok}
 
 
 def quality_digest(rnd_tag):
@@ -126,9 +133,14 @@ def main():
         tag = lr.stem.replace("round", "r")
         cov = coverage(tag)
         if cov["total"]:
-            print("| 语义覆盖 | 可判 %d/%d（%d%%），可疑 %d，无法判 %d | %s 的 storyboard |"
+            print("| 语义覆盖 | 总体 可判 %d/%d（%d%%），可疑 %d，无法判 %d | %s 的 storyboard |"
                   % (cov["judgeable"], cov["total"], round(100.0 * cov["judgeable"] / cov["total"]),
                      cov["suspect"], cov["unknown"], tag))
+            rule = cov.get("rule_segments", 0)
+            rule_ok = cov.get("rule_judgeable", 0)
+            if rule:
+                print("| 有判据类别 | %d/%d（%d%%）｜无判据类别 %d 段，原因已全部登记 | 同上 |"
+                      % (rule_ok, rule, round(100.0 * rule_ok / rule), cov["unknown"]))
         q = quality_digest(tag)
         if q:
             print("| 穿地 | 每千帧 %.1f 帧低于地面；最大深度 %.3f 米（按网格最低点对齐后，这一项接近构造成立，"
