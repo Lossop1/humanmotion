@@ -51,6 +51,20 @@ def junction_frames(gap_deg, rate_deg_per_frame, cap=120, ratio_max=1.4, floor=2
     return int(min(int(cap), max(n, need)))
 
 
+def body_travel_deg(J):
+    """身体朝向与行进方向的夹角（度）：侧移约 90，直走约 0–15。"""
+    J = np.asarray(J, dtype=np.float64)
+    hip = J[0, 2] - J[0, 1]
+    body = np.array([hip[2], 0.0, -hip[0]])
+    disp = (J[-1, 0] - J[0, 0])[[0, 2]]
+    nb, nd = float(np.linalg.norm(body)), float(np.linalg.norm(disp))
+    if nb < 1e-9 or nd < 1e-9:
+        return 0.0
+    b = math.degrees(math.atan2(float(body[0]), float(body[2])))
+    t = math.degrees(math.atan2(float(disp[0]), float(disp[1])))
+    return float(abs((t - b + 180.0) % 360.0 - 180.0))
+
+
 def enforce_facing(J, direction, global_forward_deg):
     """把这一段的世界行进方向转到请求的方向上，返回 (J2, info)。
 
@@ -61,9 +75,22 @@ def enforce_facing(J, direction, global_forward_deg):
     if name not in DIR_ANGLE:
         return J, None
     if name in ("left", "right"):
-        # 左右不能靠整体旋转伪造：旋转后身体仍然朝向行进方向，看起来还是直走。
-        # 实测 "walks to the right" 夹角只有 4–12 度，必须改用 sidesteps 提示词。
-        return J, {"requested": name, "skipped": "左右改用 sidestep 写法，不做整体旋转"}
+        # 左右能不能整体旋转，取决于这段本身是不是「侧着走」：
+        # 实测 "walks to the right" 身体与行进夹角只有 4–12 度（等于直走），旋转是伪造；
+        # "sidesteps to the right" 是 60–90 度，旋转只改世界方向、保留侧移姿态，是合法的。
+        phi0, dist0 = _disp_dir(J)
+        if phi0 is None:
+            return J, {"requested": name, "skipped": "位移过小（%.2f 米）" % dist0}
+        _ang = body_travel_deg(J)
+        if _ang < 45.0:
+            return J, {"requested": name,
+                       "skipped": "身体与行进只差 %.0f 度，不是侧移（旋转会变成直走）" % _ang}
+        target0 = _wrap_deg(global_forward_deg + DIR_ANGLE[name])
+        delta0 = _wrap_deg(target0 - phi0)
+        J2 = _rot_y(J, delta0) if abs(delta0) > 1e-6 else J
+        return J2, {"requested": name, "before_deg": round(_wrap_deg(phi0 - global_forward_deg), 1),
+                    "target_deg": round(DIR_ANGLE[name], 1), "applied_deg": round(delta0, 1),
+                    "distance_m": round(dist0, 2), "body_travel_deg": round(_ang, 1)}
     phi, dist = _disp_dir(J)
     if phi is None:
         return J, {"requested": name, "skipped": "位移过小（%.2f 米）" % dist}

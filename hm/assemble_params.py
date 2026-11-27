@@ -203,7 +203,7 @@ def build(job, sb, verbose=True):
             if _phi_p is not None:
                 _target_p = CTL._wrap_deg(_g_forward + CTL.DIR_ANGLE[_req])
                 _delta_p = CTL._wrap_deg(_target_p - _phi_p)
-                if abs(_delta_p) > 15.0:
+                if abs(_delta_p) > 10.0:
                     P = CTL.rotate_params(P, _delta_p)
                     job.log("拟合后朝向校正：%s 请求 %s，拟合后偏差 %.0f 度，已转回"
                             % (seg["segment_id"], _req, _delta_p))
