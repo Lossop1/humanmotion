@@ -465,7 +465,10 @@ def ramp_exit(params, b2, k_max=10, step_max=0.0125):
         return 0
     vlast = params[b2 - 1, 82:85] - params[b2 - 2, 82:85]
     vown = params[b2 + 3, 82:85] - params[b2 + 2, 82:85]
-    need = int(np.ceil(float(np.linalg.norm(vown - vlast)) / step_max))
+    # 二阶差分峰值约为平均变化率两倍 → 需要 8·|Δstep| 帧才能把缝压到 5 米/秒²以内
+    _dv = float(np.linalg.norm(vown - vlast))
+    need = int(np.ceil(8.0 * _dv / step_max / 8.0 * 8.0)) if _dv > 0 else 3
+    need = int(np.ceil(_dv / (5.0 * 0.05 * 0.05)))  # = dv/dt²/5 = dv/0.0125
     kk = int(min(max(3, need), k_max, T - b2 - 2))
     steps = [params[b2 + j, 82:85] - params[b2 + j - 1, 82:85] for j in range(kk + 1)]
     pos = params[b2 - 1, 82:85].copy()
