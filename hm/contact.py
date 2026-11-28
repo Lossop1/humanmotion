@@ -277,7 +277,7 @@ def blend_boundary(J, a, b, radius=2, taps=(0.25, 0.5, 0.25)):
     return out
 
 
-def make_transition_joints(Ja, Jb, n, lift_m=0.05):
+def make_transition_joints(Ja, Jb, n, lift_m=0.05, roots=None):
     """在关节空间生成交界过渡：钉住一只支撑脚，另一只抬起落地。
 
     Ja: 前段末帧 (22,3)；Jb: 后段首帧 (22,3)；n: 过渡帧数。
@@ -303,6 +303,10 @@ def make_transition_joints(Ja, Jb, n, lift_m=0.05):
     for k in range(n):
         w = (k + 1.0) / (n + 1.0)                # 严格落在两端之间（末帧不等于后段首帧，否则重复帧→速度尖峰）
         pose = Ja * (1 - w) + Jb * w
+        if roots is not None:
+            # 先用给定的根位置（Hermite），再把整帧平移过去：
+            # 这样「根」和「IK 解腿」用的是同一个根，不会出现根被覆盖、脚跟着漂的问题
+            pose = pose + (np.asarray(roots[k]) - pose[0])
         bell = np.sin(np.pi * w)
         # 支撑腿：钉在起始位置
         K, A = _two_bone_ik(pose[hip_i], sup_target, Ja[knee_i], l1, l2)

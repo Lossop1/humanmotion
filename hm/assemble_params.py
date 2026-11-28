@@ -329,29 +329,29 @@ def build(job, sb, verbose=True):
         for (_a, _b2) in _ranges:
             if _a < 1 or _b2 >= len(params):
                 continue
-            _Jt, _tinfo = _C3.make_transition_joints(_Jj[_a - 1], _Jj[_b2], _b2 - _a)
-            _, _Pt = FM.fit(_Jt, method="ik", refine=0, iters=2)
-            params[_a:_b2, :85] = np.asarray(_Pt, dtype=np.float64)[:, :85]
-            # 根位移线性化：IK 逐帧独立解根平移，直接拼接会在缝处留速度台阶
-            _q0 = params[_a - 1, 82:85].copy()
-            _q1 = params[_b2, 82:85].copy()
+            # 先定交界内每帧的根位置（三次 Hermite，两端速度匹配）
             _m = _b2 - _a
-            # 三次 Hermite：两端位置与速度都匹配，缝处不会留速度台阶
-            # 制动距离平移（把后段整体前移给足刹车距离）实测更糟：
-            # 缝处加速度 17–54、接地脚滑移 30–47（本来 6–13 / 0–24）→ 已撤回。
-            _v0 = (_q0 - params[_a - 2, 82:85]) if _a >= 2 else np.zeros(3)
-            _v1 = (params[_b2 + 1, 82:85] - _q1) if _b2 + 1 < len(params) else np.zeros(3)
-            _v0 = np.clip(_v0, -0.10, 0.10)
-            _v1 = np.clip(_v1, -0.10, 0.10)
-            _d = float(_m + 1)
+            _r0 = _Jj[_a - 1, 0, :].copy()
+            _r1 = _Jj[_b2, 0, :].copy()
+            _pp0 = _Jj[_a - 2, 0, :] if _a >= 2 else _r0
+            _pp1 = _Jj[_b2 + 1, 0, :] if _b2 + 1 < len(_Jj) else _r1
+            _vv0 = np.clip(_r0 - _pp0, -0.10, 0.10)
+            _vv1 = np.clip(_pp1 - _r1, -0.10, 0.10)
+            _dd = float(_m + 1)
+            _roots = np.zeros((_m, 3))
             for _k in range(_m):
-                _t = (_k + 1.0) / _d
+                _t = (_k + 1.0) / _dd
                 _h00 = 2 * _t ** 3 - 3 * _t ** 2 + 1
                 _h10 = _t ** 3 - 2 * _t ** 2 + _t
                 _h01 = -2 * _t ** 3 + 3 * _t ** 2
                 _h11 = _t ** 3 - _t ** 2
-                params[_a + _k, 82:85] = (_h00 * _q0 + _h10 * _d * _v0
-                                          + _h01 * _q1 + _h11 * _d * _v1)
+                _roots[_k] = (_h00 * _r0 + _h10 * _dd * _vv0
+                              + _h01 * _r1 + _h11 * _dd * _vv1)
+            _Jt, _tinfo = _C3.make_transition_joints(_Jj[_a - 1], _Jj[_b2], _m, roots=_roots)
+            _, _Pt = FM.fit(_Jt, method="ik", refine=0, iters=2)
+            params[_a:_b2, :85] = np.asarray(_Pt, dtype=np.float64)[:, :85]
+            # 「拟合后还原预定根轨迹」实测更糟（缝 74.9）：根被按帧拽回，边界速度差更大 → 已撤回。
+            # 真正的修法是不再做「分段拟合 + 拼接」，改成整段一次拟合（见文档 §53）。
             job.log("交界：%d 帧关节空间过渡（支撑脚 %d，抬脚 %.2f 米），根位移已线性化"
                     % (_m, _tinfo["support"], _tinfo["lift_m"]))
         J, V = joints_of_params(params)
