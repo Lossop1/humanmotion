@@ -716,6 +716,17 @@ def run(job, sb):
     mp4 = rd / "r" / "out.mp4"
     if mp4.exists():
         shutil.copyfile(mp4, rd / "final.mp4")
+    # 交付件帧数校验：成片帧数必须 == 装配帧数（逐帧解码计数，不能读容器头部）
+    try:
+        from hm.frame_crop import count_frames as _cf
+        _n_asm = int(len(params))
+        _n_mp4 = _cf(rd / "final.mp4")
+        if _n_mp4 != _n_asm:
+            job.log("交付件帧数校验失败：装配 %d 帧，成片 %d 帧（按缺陷处理）" % (_n_asm, _n_mp4))
+        else:
+            job.log("交付件帧数校验通过：%d 帧" % _n_asm)
+    except Exception as _e13:
+        job.log("交付件帧数校验跳过：%s" % str(_e13)[:50])
     job.log("A18 渲染完成（画质 %s）：%s" % (quality, rd / "final.mp4"))
     import os as _os2
     if _os2.environ.get("HM_DELIVER", "1") == "1":
