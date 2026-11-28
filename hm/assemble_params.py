@@ -394,6 +394,23 @@ def build(job, sb, verbose=True):
                     _jj, _ = joints_of_params(params)
                     job.log("交界向前对齐：后段整体前移 (%.3f, %.3f) 米，避免倒走过交界"
                             % (_shift[0], _shift[2]))
+                    # 前移只保住后段内部速度，接缝处仍有台阶（实测出口 1.9→30.6）。
+                    # 这里重写后段头 3 帧的根步长，从「交界末帧步长」线性过渡到它自己的步长。
+                    try:
+                        _kk = min(3, len(params) - _b2 - 1)
+                        if _kk >= 1 and _b2 >= 2:
+                            _vlast = params[_b2 - 1, 82:85] - params[_b2 - 2, 82:85]
+                            _steps = [params[_b2 + j, 82:85] - params[_b2 + j - 1, 82:85]
+                                      for j in range(_kk + 1)]
+                            _pos = params[_b2 - 1, 82:85].copy()
+                            for j in range(_kk):
+                                _w = (j + 1.0) / (_kk + 1.0)
+                                _step = _vlast * (1 - _w) + _steps[j] * _w
+                                _pos = _pos + _step
+                                params[_b2 + j, 82:85] = _pos
+                            job.log("出口速度斜坡：后段前 %d 帧根步长由交界末速过渡" % _kk)
+                    except Exception as _e11:
+                        job.log("出口速度斜坡跳过：%s" % str(_e11)[:50])
             except Exception as _e10:
                 job.log("交界向前对齐跳过：%s" % str(_e10)[:50])
             _vv0 = np.clip(_r0 - _pp0, -0.10, 0.10)
