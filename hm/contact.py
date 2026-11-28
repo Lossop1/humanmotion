@@ -22,7 +22,7 @@ from pathlib import Path
 CONTACT_HEIGHT_M = 0.03      # 离地 3 厘米内算接触
 CONTACT_VSPEED_MPS = 0.10    # 接触帧的「竖直」速度上限
 # 只看竖直方向：支撑脚打滑时水平速度恰好很大，用水平速度筛会把要修的帧全筛掉
-MAX_FIX_M = 0.03             # 单帧最大修正
+MAX_FIX_M = 0.0125            # 单帧最大修正（12.5 毫米 = 0.25 m/s，避免注入速度阶跃）
 FEET = (10, 11)              # 左右脚掌索引（22 关节）
 # 为什么不用踝（7/8）：站着时踝离地 6–9 厘米，用「距地面 3 厘米」判接触永远判不到，
 # 实测按踝算「连续 3 帧支撑」一个区间都没有；脚掌才是真正接触地面的点。
@@ -77,8 +77,14 @@ def pin_contacts(J, mask=None, max_fix_m=MAX_FIX_M, fps=20):
         both = mask[t] & mask[t - 1]
         if not both.any():
             continue
-        # 与上一帧都在支撑的脚，其水平漂移就是要抵消的量（多只脚取平均）
-        drift = np.mean(_ankle_xz(J)[t][both] - _ankle_xz(J)[t - 1][both], axis=0)
+        # 只钉「当前最低的那只脚」：双脚同时支撑时取平均等于两只脚各滑一半，
+        # 实测交界处两脚并拢被拖动（30–77 毫米/帧）。取最低脚 = 真正的承重脚。
+        if both.sum() >= 1:
+            _h = np.array([J[t - 1, FEET[k], 1] for k in range(2)])
+            _k = int(np.argmin(np.where(both, _h, 9e9)))
+            drift = _ankle_xz(J)[t][_k] - _ankle_xz(J)[t - 1][_k]
+        else:
+            continue
         corr = -np.clip(drift, -max_fix_m, max_fix_m)
         total += corr
         J[t:, :, 0] += corr[0]
@@ -190,3 +196,82 @@ def alternations(src):
     J = np.load(src) if isinstance(src, (str, Path)) else np.asarray(src, dtype=np.float64)
     m = contact_mask(J)
     return int(np.sum(m[1:, 0] != m[:-1, 0]))
+
+
+# 22 关节的腿链：髋 1/2、膝 4/5、踝 7/8、脚 10/11
+LEG = {0: (1, 4, 7, 10), 1: (2, 5, 8, 11)}
+
+
+def _two_bone_ik(H, A, K0, l1, l2):
+    """两骨 IK：给定髋 H 与目标踝 A，返回膝与踝的新位置（保持骨长）。"""
+    v = A - H
+    d = float(np.linalg.norm(v))
+    if d < 1e-6:
+        return K0, A
+    d = min(max(d, abs(l1 - l2) + 1e-4), l1 + l2 - 1e-4)
+    u = v / np.linalg.norm(v)
+    # 膝弯曲方向：用原膝相对髋-踝连线的垂直分量作极向量
+    pol = (K0 - H) - np.dot(K0 - H, u) * u
+    n = np.linalg.norm(pol)
+    if n < 1e-6:
+        pol = np.cross(u, np.array([0.0, 1.0, 0.0]))
+        n = np.linalg.norm(pol) or 1e-6
+    w = pol / n
+    cos_a = (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)
+    a = np.arccos(np.clip(cos_a, -1.0, 1.0))
+    K = H + (np.cos(a) * u + np.sin(a) * w) * l1
+    return K, H + u * d
+
+
+def step_junction(J, a, b, lift_m=0.04, fps=20):
+    """交界处「抬一只脚、钉住另一只」：把滑动换成一次抬脚。
+
+    J: 整段关节；[a, b) 是交界帧区间。
+    返回 (J2, info)。支撑脚取区间内更低、更稳的那只；另一只脚抬起来并且水平不动，
+    这样过渡不再是「两脚并拢被拖」，而是「站着抬脚」。
+    """
+    J = np.array(J, dtype=np.float64, copy=True)
+    T = len(J)
+    a, b = max(0, a), min(b, T)
+    if b - a < 2:
+        return J, {"skipped": "区间太短"}
+    sole = J[:, [10, 11], :]
+    # 支撑脚：区间内平均高度更低的那只
+    mean_h = [float(np.mean(sole[a:b, k, 1])) for k in range(2)]
+    sup = int(np.argmin(mean_h))
+    swing = 1 - sup
+    hip_i, knee_i, ank_i, toe_i = LEG[swing]
+    l1 = float(np.linalg.norm(J[0, knee_i] - J[0, hip_i]))
+    l2 = float(np.linalg.norm(J[0, ank_i] - J[0, knee_i]))
+    target_xz = sole[a, swing][[0, 2]].copy()          # 水平钉在区间起点
+    n = b - a
+    fixed = 0
+    for k in range(n):
+        t = a + k
+        bell = np.sin(np.pi * (k + 0.5) / n)
+        A = np.array([target_xz[0], J[t, ank_i, 1], target_xz[1]])
+        K, A2 = _two_bone_ik(J[t, hip_i], A, J[t, knee_i], l1, l2)
+        J[t, knee_i] = K
+        J[t, ank_i] = A2 + np.array([0.0, lift_m * bell, 0.0])
+        J[t, toe_i] += J[t, ank_i] - A2                # 脚随踝走
+        fixed += 1
+    return J, {"support": sup, "frames": fixed, "lift_m": lift_m}
+
+
+def blend_boundary(J, a, b, radius=2, taps=(0.25, 0.5, 0.25)):
+    """在交界两端各 radius 帧内做 3 抽头平滑，压掉速度跳变。
+
+    交界是用解析 IK 重拟的，逐帧独立解 → 两端出现速度台阶（实测 0.39 → 1.37 米/秒）。
+    这里只平滑两端窗口，不动交界内部（内部要保留抬脚）。
+    """
+    J = np.array(J, dtype=np.float64, copy=True)
+    T = len(J)
+    out = J
+    for edge in (a, b - 1):
+        lo = max(0, edge - radius)
+        hi = min(T, edge + radius + 1)
+        if hi - lo < 3:
+            continue
+        for t in range(lo + 1, hi - 1):
+            out[t] = taps[0] * J[t - 1] + taps[1] * J[t] + taps[2] * J[t + 1]
+    return out

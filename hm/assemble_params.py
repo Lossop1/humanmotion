@@ -245,6 +245,20 @@ def build(job, sb, verbose=True):
         # 最小过渡 6 帧（0.3 秒）：实测使用者判「2 秒左右走转挥手过渡太快 不自然」，
         # 那一段交界只有 7 帧且姿态差 61 度，看着像瞬间切换。
         n = int(max(6, min(60, round(gap / rate))))
+        # 交界帧数还要看两端根速度：从 1.2 米/秒一帧刹到 0 = 2.4g，物理上做不到。
+        # 按减速度 ≤0.25 米/秒/帧（≈5 m/s²）反推所需帧数。
+        try:
+            _pa = pieces[_idx - 2] if _idx >= 2 else pieces[0]
+            _pb = pieces[_idx - 1]
+            _va = float(np.linalg.norm(_pa[-1, 0] - _pa[-2, 0]) * 20) if len(_pa) > 1 else 0.0
+            _vb = float(np.linalg.norm(_pb[1, 0] - _pb[0, 0]) * 20) if len(_pb) > 1 else 0.0
+            _v_req = int(np.ceil(abs(_va - _vb) / 0.25))
+            if _v_req > n:
+                job.log("交界加长：两端根速 %.2f→%.2f 米每秒，需要 %d 帧（原 %d）"
+                        % (_va, _vb, _v_req, n))
+                n = int(min(60, _v_req))
+        except Exception:
+            pass
         n = int(min(n, max(2, FJ.DEFAULT_TRANSITION)) if gap <= FJ.EXTREME_GAP_DEG else n)
         # 过渡本身也有速度上限：姿态差再大，也不能一两帧甩完
         # 过渡速度上限不应用固定值，而应与两侧运动速度对比：
@@ -297,6 +311,76 @@ def build(job, sb, verbose=True):
     # 网格层钉脚已撤回：独立复核发现它压平的正是它自己量的量（自证），
     # 且并集质心在换脚帧会给出 3 厘米/帧的横向猛拽（实测换脚帧根速 1.15–1.46 m/s）。
     # 详见 docs/证据度量.md §49。保留 contact.pin_mesh 供离线实验，不在主链调用。
+
+    # 交界钉脚：过渡帧是在参数空间插出来的，段内钉脚管不到它们。
+    # 这里对交界帧再钉一次「最低的支撑脚」，把「两脚并拢被拖」改成「一脚钉住、另一脚迈过去」。
+    try:
+        from hm import contact as _C3
+        _ranges = []
+        _cur = 0
+        for _i, _b in enumerate(bounds):
+            _cur += _b["frames"]
+            if _i < len(junctions):
+                _n = junctions[_i]["transition_frames"]
+                _ranges.append((_cur, _cur + _n))
+                _cur += _n
+        _fixed = 0
+        for (_a, _b2) in _ranges:
+            _seg = params[_a:_b2].copy()
+            _J2, _Jv = joints_of_params(_seg)
+            _m = _C3.contact_mask(_J2)
+            _J3, _info = _C3.pin_contacts(_J2, _m)
+            # 抬脚：把「两脚并拢被拖」换成「钉住一只、抬起另一只」
+            # 交界抬脚默认关闭：解析 IK 写回参数后两段不连续（实测边界速度 3.9 米/秒）。
+            # 正确做法是把过渡放到关节空间、与后段一起拟合，属于下一项改动。
+            _use_step = __import__("os").environ.get("HM_JUNC_STEP", "0") == "1"
+            _J3, _step = _C3.step_junction(_J3, 0, len(_J3)) if _use_step else (_J3, {})
+            if _step.get("frames"):
+                job.log("交界抬脚：钉住脚 %d，抬起脚 %d，%d 帧，抬 %.2f 米"
+                        % (_step["support"], 1 - _step["support"], _step["frames"], _step["lift_m"]))
+                # 抬脚必须落回参数空间：关节改完不算数，流水线后面会用 params 重算 J/V。
+                # 用解析 IK 把抬脚后的交界关节转成参数，再替换这几帧。
+                try:
+                    _, _Pj = FM.fit(_J3, method="ik", refine=0, iters=2)
+                    _Pj = np.asarray(_Pj, dtype=np.float64)
+                    _n2 = min(len(_Pj), _b2 - _a)
+                    params[_a:_a+_n2, :85] = _Pj[:_n2, :85]
+                    # 解析 IK 逐帧独立解根平移 → 交界两端会跳（实测边界速度 2.3/4.7 米每秒）。
+                    # 交界根位移改为相邻两帧之间的线性插值，连续性由构造保证。
+                    if _a >= 1 and _a + _n2 < len(params):
+                        _p0 = params[_a - 1, 82:85].copy()
+                        _p1 = params[_a + _n2, 82:85].copy()
+                        for _k in range(_n2):
+                            _w = (_k + 1.0) / (_n2 + 1.0)
+                            params[_a + _k, 82:85] = _p0 * (1 - _w) + _p1 * _w
+                    job.log("抬脚落参数：交界 %d 帧已用解析 IK 重拟（交界根位移线性化）" % _n2)
+                    _Jb = _C3.blend_boundary(_J3, 0, _n2, radius=2)
+                    params[_a:_a+_n2, :85] = params[_a:_a+_n2, :85]  # 占位，下面用 _Jb 重拟
+                    try:
+                        _, _Pb = FM.fit(_Jb, method="ik", refine=0, iters=2)
+                        _Pb = np.asarray(_Pb, dtype=np.float64)
+                        params[_a:_a+_n2, :85] = _Pb[:_n2, :85]
+                        if _a >= 1 and _a + _n2 < len(params):
+                            _p0 = params[_a - 1, 82:85].copy()
+                            _p1 = params[_a + _n2, 82:85].copy()
+                            for _k in range(_n2):
+                                _w = (_k + 1.0) / (_n2 + 1.0)
+                                params[_a + _k, 82:85] = _p0 * (1 - _w) + _p1 * _w
+                        job.log("交界边界平滑：两端各 2 帧已压速度台阶")
+                    except Exception as _e3:
+                        job.log("交界边界平滑失败：%s" % str(_e3)[:60])
+                except Exception as _e2:
+                    job.log("抬脚落参数失败：%s" % str(_e2)[:80])
+            if _info.get("frames"):
+                _d = _J3[:, 0, :] - _J2[:, 0, :]
+                params[_a:_b2, 82] += _d[:, 0]
+                params[_a:_b2, 84] += _d[:, 2]
+                _fixed += 1
+        if _fixed:
+            J, V = joints_of_params(params)
+            job.log("交界钉脚：%d 处过渡已钉住支撑脚" % _fixed)
+    except Exception as _e:
+        job.log("交界钉脚跳过：%s" % str(_e)[:60])
 
     # 逐段贴地（网格最低点）：实测「走到挥手」的挥手段整段悬空 4.3 厘米、
     # 交界悬空 3.6 厘米 —— 按关节对齐会漏掉脚掌比关节低的那几厘米。
