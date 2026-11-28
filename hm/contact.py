@@ -322,7 +322,8 @@ def make_transition_joints(Ja, Jb, n, lift_m=0.05, roots=None, resid_a=None, res
             try:
                 _ra = resid_a[min(len(resid_a) - 1, k)]
                 _rb = resid_b[min(len(resid_b) - 1, k)]
-                _res = (1 - w) * _ra + w * _rb
+                _sc = float(__import__("os").environ.get("HM_JRESID_SCALE", "1.4"))
+                _res = ((1 - w) * _ra + w * _rb) * _sc
                 pose[12:] = pose[12:] + _res[12:]
             except Exception:
                 pass
