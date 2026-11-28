@@ -301,7 +301,7 @@ def make_transition_joints(Ja, Jb, n, lift_m=0.05):
     swing_from = Ja[ank_s].copy()
     swing_to = Jb[ank_s].copy()
     for k in range(n):
-        w = (k + 1.0) / float(n)                  # 末帧 = 1（等于后段首帧）
+        w = (k + 1.0) / (n + 1.0)                # 严格落在两端之间（末帧不等于后段首帧，否则重复帧→速度尖峰）
         pose = Ja * (1 - w) + Jb * w
         bell = np.sin(np.pi * w)
         # 支撑腿：钉在起始位置

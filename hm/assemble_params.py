@@ -337,10 +337,12 @@ def build(job, sb, verbose=True):
             _q1 = params[_b2, 82:85].copy()
             _m = _b2 - _a
             # 三次 Hermite：两端位置与速度都匹配，缝处不会留速度台阶
+            # 制动距离平移（把后段整体前移给足刹车距离）实测更糟：
+            # 缝处加速度 17–54、接地脚滑移 30–47（本来 6–13 / 0–24）→ 已撤回。
             _v0 = (_q0 - params[_a - 2, 82:85]) if _a >= 2 else np.zeros(3)
             _v1 = (params[_b2 + 1, 82:85] - _q1) if _b2 + 1 < len(params) else np.zeros(3)
-            _v0 = np.clip(_v0, -0.06, 0.06)
-            _v1 = np.clip(_v1, -0.06, 0.06)
+            _v0 = np.clip(_v0, -0.10, 0.10)
+            _v1 = np.clip(_v1, -0.10, 0.10)
             _d = float(_m + 1)
             for _k in range(_m):
                 _t = (_k + 1.0) / _d
