@@ -61,7 +61,8 @@ def report(job_id):
 
     mp4 = job / "render" / "final.mp4"
     cap = cv2.VideoCapture(str(mp4))
-    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    from hm.frame_crop import count_frames
+    total = count_frames(mp4)
     frames = []
     for n, label, idx in marks:
         cap.set(cv2.CAP_PROP_POS_FRAMES, min(idx, max(total - 1, 0)))

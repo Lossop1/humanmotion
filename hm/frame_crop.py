@@ -11,6 +11,19 @@ import sys
 from pathlib import Path
 
 import cv2
+
+
+def count_frames(path):
+    """逐帧解码计数。Blender 输出的 mp4 没有索引，CAP_PROP_FRAME_COUNT 会给出错误值（实测 20 vs 115）。"""
+    cap = cv2.VideoCapture(str(path))
+    n = 0
+    while True:
+        ok, _ = cap.read()
+        if not ok:
+            break
+        n += 1
+    cap.release()
+    return n
 import numpy as np
 
 # 这个模块原在仓库根；搬进 hm/ 后 parent 是包目录，仓库根要往上两级
@@ -27,7 +40,7 @@ def _ffmpeg():
 
 def measure_bbox(path, samples=12, thr=18):
     cap = cv2.VideoCapture(str(path))
-    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    n = count_frames(src)
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     top, bot, left, right = h, 0, w, 0
@@ -54,7 +67,7 @@ def measure_bbox_motion(path, samples=24, thr=10):
     （实测 bbox 变成 0,16–719,719，裁切等于没裁、人变小）。
     """
     cap = cv2.VideoCapture(str(path))
-    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    n = count_frames(src)
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     prev = None
