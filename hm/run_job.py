@@ -888,7 +888,19 @@ def step_a12_a13(job, sb, max_retry=2):
         def key(c):
             m = c["metrics"]
             _ok = _sig_of.get(c["candidate_id"]) if "_sig_of" in dir() else None
-            return (0 if _ok is True else 1,
+            # 转身类：优先选左右脚交替多的候选。实测同一提示词的候选交替 2–5 次，
+            # 而此前被选中的候选交替只有 1 次 —— 选择不看这个量，等于把会迈步的丢掉。
+            _alt_pen = 0.0
+            try:
+                from hm import contact as _C2
+                if "turn" in (seg.get("text_gen_final") or "").lower():
+                    _n = int(str(c["candidate_id"]).split("_")[-1])
+                    _jp = job.dir / "segments" / seg["segment_id"] / ("candidate_%d" % _n) / "joints22.npy"
+                    if _jp.exists():
+                        _alt_pen = -2.0 * _C2.alternations(_jp)
+            except Exception:
+                _alt_pen = 0.0
+            return (0 if _ok is True else 1, _alt_pen,
             _goal_bonus(job, seg, c),
                     m.get("bone_length_jitter_m") or 9e9,
                     m.get("pose_rate_max") or 9e9,

@@ -21,6 +21,8 @@ RULES = [
     (r"\b(walks?|walking|runs?|running|sprints?|jogs?|steps?)\b\s+"
      r"(forward|backward|to the left|to the right)", "disp_m", 0.6, "应走出去", "min"),
     (r"turns? around|turning around", "yaw_deg", 45.0, "应转向", "min"),
+    # 转身要有迈步：实测原地拧腰的候选交替 0–1 次，迈步的 2–5 次
+    (r"turns? around|turning around", "contact_alt", 2.0, "转身应迈步（左右脚交替 ≥2 次）", "min"),
     # 跑不该整段弹跳：实测 runs/sprints 起伏 0.85–1.0 米，jogs 只有 0.12 米
     (r"\b(runs?|running|sprints?|jogs?)\b", "pelvis_range", 0.25, "跑不该整段弹跳离地", "max"),
     # 换脚转身写法 steps around to face the other way 测得支撑脚滑动 0 mm/s，
@@ -97,6 +99,16 @@ def why_unjudgeable(prompt):
     return ""
 
 
+def _contact_alt(J):
+    """左右脚接触状态交替次数（0 = 双脚一直贴地）。"""
+    try:
+        from hm import contact as _C
+        m = _C.contact_mask(J)
+        return int(np.sum(m[1:, 0] != m[:-1, 0]))
+    except Exception:
+        return 0
+
+
 def _yaw(J):
     v = J[2] - J[1]
     return math.degrees(math.atan2(float(v[0]), float(v[2])))
@@ -169,6 +181,10 @@ def signature(J):
         "pelvis_range": float(J[:, PELVIS, 1].max() - J[:, PELVIS, 1].min()),
         "pelvis_end_drop": pelvis_end_drop,
         "yaw_deg": float(abs(yaws[-1] - yaws[0])),
+        # 左右脚接触交替次数：转身靠迈步时会 ≥2；原地拧腰几乎为 0。
+        # 实测同一提示词新生成 6 个候选，交替 2–5 次 → 模型会迈步，
+        # 只是我们选候选时没看这个量（选中过交替 =1 的），这条把选择与判据补上。
+        "contact_alt": _contact_alt(J),
         # 身体朝向与行进方向的夹角：侧移应约 90 度，直走约 0 度。
         # 实测 "walks to the right" 夹角只有 4–12 度（其实是直走），
         # "sidesteps to the right" 是 58–93 度——这个量能把两者分开。

@@ -297,14 +297,29 @@ def choose_combination(job, sb, verbose=True):
 
     M = [len(c) for _, c in segs]
     INF = 1e18
-    cost = [[0.0] * M[0]]
+    # 转身段加一项「不迈步」惩罚：给交替次数少的候选加代价，
+    # 否则交界最优会选择「脚不迈步、姿态差小」的候选（实测选中过交替只有 1 次的）。
+    def _step_penalty(seg, cand):
+        try:
+            from hm import contact as _C
+            if "turn" not in (seg.get("text_gen_final") or "").lower():
+                return 0.0
+            n = int(str(cand["candidate_id"]).split("_")[-1])
+            jp = job.dir / "segments" / seg["segment_id"] / ("candidate_%d" % n) / "joints22.npy"
+            if not jp.exists():
+                return 0.0
+            # 交替越多越好：目标 5 次以上，少的按次数加代价\n            return max(0.0, float(5 - _C.alternations(jp))) * 15.0
+        except Exception:
+            return 0.0
+    _pen = [[_step_penalty(seg, cand) for cand in cs] for seg, cs in segs]
+    cost = [[_pen[0][k] for k in range(M[0])]]
     back = [[-1] * M[0]]
     for si in range(1, len(M)):
         c_new, b_new = [], []
         for cb in range(M[si]):
             best, arg = INF, -1
             for ca in range(M[si - 1]):
-                v = cost[si - 1][ca] + gap(Js[si - 1][ca], Js[si][cb])
+                v = (cost[si - 1][ca] + gap(Js[si - 1][ca], Js[si][cb]) + _pen[si][cb])
                 if v < best:
                     best, arg = v, ca
             c_new.append(best)

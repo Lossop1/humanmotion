@@ -17,6 +17,7 @@
     整体平移只改根轨迹，对姿态零改动，可验证、可回退。
 """
 import numpy as np
+from pathlib import Path
 
 CONTACT_HEIGHT_M = 0.03      # 离地 3 厘米内算接触
 CONTACT_VSPEED_MPS = 0.10    # 接触帧的「竖直」速度上限
@@ -182,3 +183,10 @@ def pin_mesh(verts, params, thr=0.02, max_fix_m=0.03):
         prev = c
     return P, {"slide_before_mm": round(before, 1), "fixed_frames": fixed,
                "fixed_m": round(float(np.linalg.norm(total)), 3)}
+
+
+def alternations(src):
+    """左右脚接触交替次数（可传关节数组或路径）。0 = 双脚一直贴地。"""
+    J = np.load(src) if isinstance(src, (str, Path)) else np.asarray(src, dtype=np.float64)
+    m = contact_mask(J)
+    return int(np.sum(m[1:, 0] != m[:-1, 0]))
