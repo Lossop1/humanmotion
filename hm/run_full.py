@@ -104,10 +104,24 @@ def plan_only(sentence, job_id=None):
     cfg = {"model": config.DEFAULT_MODEL, "k": None, "fps": 20,
            "coordinate_system": "HumanML3D", "schema": "storyboard_v1"}
     job = jobmod.Job(sentence, job_id=job_id)
+    # 规划复用：HM_PLAN=<storyboard.json> 时直接用已保存的规划，不再问 LLM。
+    # 起因：同一句同一 seed 两次运行，规划器给出 'jogs forward' 与 'jogs forward slowly'，
+    # 于是生成动作不同、指标全变（docs §55.10）。A/B 必须先钉住规划。
+    _plan_path = __import__("os").environ.get("HM_PLAN")
     run_job.step_a01(job, cfg)
-    sb, warns = run_job.step_a02(job, sentence)
-    for w in warns:
-        job.log("提醒：" + w)
+    if _plan_path:
+        import json as _json
+        from pathlib import Path as _Path
+        _p = _Path(_plan_path)
+        if not _p.exists():
+            raise SystemExit("HM_PLAN 指向的规划文件不存在：%s" % _p)
+        sb = _json.loads(_p.read_text(encoding="utf-8"))
+        job.log("规划复用：%s（%d 段，不再调用规划器）"
+                % (_p.name, len(sb.get("segments") or [])))
+    else:
+        sb, warns = run_job.step_a02(job, sentence)
+        for w in warns:
+            job.log("提醒：" + w)
     sb, _ = run_job.step_a03(job, sb)
     run_job.step_a04(job, sb)
     run_job.step_a05(job, sb)
@@ -135,9 +149,20 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
     print("  任务目录：%s" % job.dir)
 
     run_job.step_a01(job, cfg)
-    sb, warns = run_job.step_a02(job, sentence)
-    for w in warns:
-        job.log("提醒：" + w)
+    _plan_path2 = __import__("os").environ.get("HM_PLAN")
+    if _plan_path2:
+        import json as _json2
+        from pathlib import Path as _Path2
+        _p2 = _Path2(_plan_path2)
+        if not _p2.exists():
+            raise SystemExit("HM_PLAN 指向的规划文件不存在：%s" % _p2)
+        sb = _json2.loads(_p2.read_text(encoding="utf-8"))
+        job.log("规划复用：%s（%d 段，不再调用规划器）"
+                % (_p2.name, len(sb.get("segments") or [])))
+    else:
+        sb, warns = run_job.step_a02(job, sentence)
+        for w in warns:
+            job.log("提醒：" + w)
     sb, _ = run_job.step_a03(job, sb)
     run_job.step_a04(job, sb)
     run_job.step_a05(job, sb)
