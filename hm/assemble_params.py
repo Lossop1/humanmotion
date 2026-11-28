@@ -522,6 +522,19 @@ def build(job, sb, verbose=True):
                     job.log("交界淡入跳过：%s" % str(_e15)[:80])
             _, _Pt = FM.fit(_Jt, method="ik", refine=0, iters=2)
             params[_a:_b2, :85] = np.asarray(_Pt, dtype=np.float64)[:, :85]
+            # 交界第一帧根跳 6.7 厘米（f47 0.14 米/秒 → f48 1.34 米/秒，见 docs §56.8）：
+            # 重拟会把根放到别处，这里只做平移还原（不改姿态），把根放回预定的 Hermite。
+            if __import__("os").environ.get("HM_JROOTFIX", "0") == "1":
+                try:
+                    _jr, _ = joints_of_params(params[_a:_b2])
+                    _d = _roots - _jr[:, 0, :]
+                    params[_a:_b2, 82] += _d[:, 0]
+                    params[_a:_b2, 84] += _d[:, 2]
+                    params[_a:_b2, 83] += _d[:, 1]
+                    job.log("交界根位置还原：%d 帧，最大修正 %.3f 米"
+                            % (_b2 - _a, float(np.abs(_d).max())))
+                except Exception as _e17:
+                    job.log("交界根位置还原失败：%s" % str(_e17)[:80])
             # 「拟合后还原预定根轨迹」实测更糟（缝 74.9）：根被按帧拽回，边界速度差更大 → 已撤回。
             # 真正的修法是不再做「分段拟合 + 拼接」，改成整段一次拟合（见文档 §53）。
             if __import__("os").environ.get("HM_DEBUG_JUNC") == "1":
