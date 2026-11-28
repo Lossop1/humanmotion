@@ -128,6 +128,42 @@ def scan_accel(J, bj, topn=5):
     return out
 
 
+def shape_metrics(J):
+    """形态量：平滑不等于自然。三份盲评指出的问题在这里量化。
+
+    M1 摆动脚次序：离地最高点必须出现在区间中点附近，且之后要落地
+    M2 上半身：肩-髋相对扭转幅度、腕部上下摆动幅度
+    M3 竖直漂移：整段脚掌最低点漂移
+    """
+    sole = J[:, list(SOLE), :]
+    h = sole[..., 1]
+    T = len(J)
+    out = {}
+    for k in (0, 1):
+        air = np.where(h[:, k] - h[:, k].min() > 0.03)[0]
+        if len(air) == 0:
+            out["M1_foot%d" % k] = {"air": 0, "peak_ratio": None, "landed": False}
+            continue
+        peak = int(air[int(np.argmax(h[air, k]))])
+        out["M1_foot%d" % k] = {
+            "air": int(len(air)),
+            "peak_ratio": round(peak / float(max(T - 1, 1)), 2),
+            "landed": bool(h[min(T - 1, air[-1] + 2), k] - h[:, k].min() < 0.03),
+        }
+    # 肩-髋相对扭转（用肩线 16/17 与髋线 1/2 在水平面的夹角）
+    def yaw(a, b):
+        v = J[:, b, :] - J[:, a, :]
+        return np.degrees(np.arctan2(v[:, 2], v[:, 0]))
+    sh = yaw(16, 17)
+    hp = yaw(1, 2)
+    twist = np.degrees(np.unwrap(np.radians(sh - hp)))
+    out["M2_twist_deg"] = round(float(twist.max() - twist.min()), 1)
+    arms = max(float(h[:, k].max() - h[:, k].min()) for k in (0, 1))
+    out["M2_sole_range_m"] = round(arms, 3)
+    out["M3_drift_m"] = round(float(h.min(axis=1)[-1] - h.min(axis=1)[0]), 3)
+    return out
+
+
 def audit_job(jid):
     d = ROOT / "outputs" / jid
     bj = json.loads((d / "assembled" / "bounds.json").read_text(encoding="utf-8"))
@@ -208,12 +244,19 @@ def main():
     ap.add_argument("--job", default=None)
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--scan", action="store_true", help="全片根加速度扫描（不限交界）")
+    ap.add_argument("--shape", action="store_true", help="形态量（M1 摆动次序 / M2 上半身 / M3 漂移）")
     a = ap.parse_args()
     if a.selftest:
         selftest()
         return
     if not a.job:
         print("  用法：python -m hm.ops.junction_audit --job <任务> ｜ --selftest")
+        return
+    if a.shape:
+        d = ROOT / "outputs" / a.job
+        J = np.load(d / "assembled" / "joints22.npy")
+        for k, v in shape_metrics(J).items():
+            print("  %-14s %s" % (k, v))
         return
     if a.scan:
         d = ROOT / "outputs" / a.job
