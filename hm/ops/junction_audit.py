@@ -73,8 +73,21 @@ def junction_stats(J, a, b):
         p0, p1, p2 = J[t0 - 1, 0], J[t0, 0], J[t0 + 1, 0]
         return float(np.linalg.norm(p2 - 2 * p1 + p0) * FPS * FPS)
 
+    # 摆动相：交界内是否有一只脚「抬起—前移—落地」。三份盲评都说没有，
+    # 所以这里把它变成可测量：抬升高度、空中帧数、水平换位距离。
+    h = seg[..., 1] - gy
+    swing_lift = 0.0
+    swing_travel = 0.0
+    swing_air = 0
+    for k in (0, 1):
+        lift = float(h[:, k].max() - h[:, k].min())
+        air = int((h[:, k] > 0.03).sum())
+        travel = float(np.linalg.norm(seg[-1, k, [0, 2]] - seg[0, k, [0, 2]]))
+        if lift > swing_lift:
+            swing_lift, swing_air, swing_travel = lift, air, travel
     return {"frames": b - a, "dsd": dsd, "p90": p90,
-            "seam_in": seam_acc(a), "seam_out": seam_acc(b)}
+            "seam_in": seam_acc(a), "seam_out": seam_acc(b),
+            "swing_lift": swing_lift, "swing_air": swing_air, "swing_travel": swing_travel}
 
 
 def judge(st):
@@ -85,6 +98,12 @@ def judge(st):
         bad.append("p90")
     if max(st["seam_in"], st["seam_out"]) > SEAM_LIMIT:
         bad.append("seam")
+    # 摆动相默认只作为观察量：站立/制动类交界本来就没有摆动相，
+    # 不能一律当失败（5 段合成里 plant/brake 就是这种）。
+    # 需要强制时用 HM_SWING_GATE=1。
+    if __import__("os").environ.get("HM_SWING_GATE") == "1":
+        if not (st["swing_lift"] >= 0.04 and st["swing_air"] >= 2 and st["swing_travel"] >= 0.10):
+            bad.append("swing")
     return bad
 
 
@@ -101,9 +120,11 @@ def audit_job(jid):
     for i, (a, b) in enumerate(juncs):
         st = junction_stats(J, a, b)
         bad = judge(st)
-        lines.append("junc%d %d-%d 帧%d DSD=%d p90=%.0f/%.0f seam=%.1f/%.1f %s" % (
+        lines.append("junc%d %d-%d 帧%d DSD=%d p90=%.0f/%.0f seam=%.1f/%.1f "
+                     "swing=%.0fmm/%d帧/%.0fmm %s" % (
             i + 1, a, b - 1, st["frames"], st["dsd"], st["p90"][0], st["p90"][1],
-            st["seam_in"], st["seam_out"], ("FAIL " + ",".join(bad)) if bad else "PASS"))
+            st["seam_in"], st["seam_out"], st["swing_lift"] * 1000, st["swing_air"],
+            st["swing_travel"] * 1000, ("FAIL " + ",".join(bad)) if bad else "PASS"))
     return lines
 
 
