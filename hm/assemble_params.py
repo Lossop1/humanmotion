@@ -372,6 +372,23 @@ def build(job, sb, verbose=True):
             except Exception as _e7:
                 job.log("减速斜坡跳过：%s" % str(_e7)[:200])
 
+            # 交界里「真的迈一步」：把后段沿行进方向前移一个步长，
+            # 这样 Jb 的脚也随之前移 → 摆动脚有「落到明显靠前位置」的目标，
+            # 身体也会在交界里前移（盲评 §56.2：「落点贴着另一只脚」「重心没压到支撑脚上方」）。
+            _jstep = float(__import__("os").environ.get("HM_JSTEP", "0") or 0)
+            if _jstep > 0:
+                try:
+                    _tr = _Jj[_a - 1, 0, :] - _Jj[max(0, _a - 6), 0, :]
+                    _n2 = float(np.linalg.norm(_tr[[0, 2]]))
+                    if _n2 > 1e-6:
+                        _u2 = _tr[[0, 2]] / _n2
+                        params[_b2:, 82] += _u2[0] * _jstep
+                        params[_b2:, 84] += _u2[1] * _jstep
+                        _Jj, _ = joints_of_params(params)
+                        job.log("交界迈步：后段前移 %.2f 米，摆动脚目标随之前送" % _jstep)
+                except Exception as _e14:
+                    job.log("交界迈步跳过：%s" % str(_e14)[:80])
+
             # 先定交界内每帧的根位置（三次 Hermite，两端速度匹配）
             _m = _b2 - _a
             _r0 = _Jj[_a - 1, 0, :].copy()
