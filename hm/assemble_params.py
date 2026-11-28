@@ -483,7 +483,9 @@ def build(job, sb, verbose=True):
                 job.log("单调钳制跳过：%s" % str(_e9)[:40])
             if __import__("os").environ.get("HM_TRACE_Z") == "1":
                 job.log("ROOTS_Z r0=(%.3f,%.3f) r1=(%.3f,%.3f) " % (_r0[0], _r0[2], _r1[0], _r1[2]) + " ".join("%d:%.4f" % (_a + k, _roots[k, 2]) for k in range(_m)))
-            _jl = float(__import__("os").environ.get("HM_JLIFT", "0.05"))
+            # 默认 0.07：可复现 A/B 实测 0.05→摆动抬升 32 毫米、0.08→50 毫米，
+            # 取 0.07 让抬升越过 40 毫米门槛（docs §56）
+            _jl = float(__import__("os").environ.get("HM_JLIFT", "0.07"))
             _Jt, _tinfo = _C3.make_transition_joints(_Jj[_a - 1], _Jj[_b2], _m,
                                                     lift_m=_jl, roots=_roots)
             _, _Pt = FM.fit(_Jt, method="ik", refine=0, iters=2)
