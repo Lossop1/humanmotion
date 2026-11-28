@@ -323,7 +323,13 @@ def make_transition_joints(Ja, Jb, n, lift_m=0.05, roots=None, resid_a=None, res
                 _ra = resid_a[min(len(resid_a) - 1, k)]
                 _rb = resid_b[min(len(resid_b) - 1, k)]
                 _sc = float(__import__("os").environ.get("HM_JRESID_SCALE", "1.4"))
-                _res = ((1 - w) * _ra + w * _rb) * _sc
+                # 钟形包络：首末各 3 帧振幅为 0，否则残差会在交界末尾顶出两帧前折
+                # （盲评在 f58–59 看到「突然含胸、躯干前折」，见 docs §62.2）
+                # 只对末尾淡出：尖峰出现在交界末尾（f58–59 前折），起点不淡，
+                # 否则会把前段本来的上半身幅度也抹掉（实测 8.4° → 5.5°）。
+                _fade = float(__import__("os").environ.get("HM_JRESID_FADE", "2"))
+                _env = 1.0 if _fade <= 0 else min(1.0, (n - 1 - k) / _fade)
+                _res = ((1 - w) * _ra + w * _rb) * _sc * _env
                 pose[12:] = pose[12:] + _res[12:]
             except Exception:
                 pass
