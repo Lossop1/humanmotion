@@ -424,7 +424,7 @@ def build(job, sb, verbose=True):
             except Exception as _e9:
                 job.log("单调钳制跳过：%s" % str(_e9)[:40])
             if __import__("os").environ.get("HM_TRACE_Z") == "1":
-                job.log("ROOTS_Z " + " ".join("%d:%.4f" % (a + k, _roots[k, 2]) for k in range(_m)))
+                job.log("ROOTS_Z " + " ".join("%d:%.4f" % (_a + k, _roots[k, 2]) for k in range(_m)))
             _Jt, _tinfo = _C3.make_transition_joints(_Jj[_a - 1], _Jj[_b2], _m, roots=_roots)
             _, _Pt = FM.fit(_Jt, method="ik", refine=0, iters=2)
             params[_a:_b2, :85] = np.asarray(_Pt, dtype=np.float64)[:, :85]
