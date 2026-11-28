@@ -397,8 +397,12 @@ def build(job, sb, verbose=True):
             # 入口速度顺接（与出口对称）：交界头两帧按前段（已做减速斜坡的）速度前进，
             # 使交界第一步与前一帧速度一致，二阶差分不再把入口算成 10–17 米/秒²。
             if _m >= 5:
+                # 入口速度必须取「已做斜坡的 params」里的实际步长：
+                # 之前用的 _vv0 来自斜坡前，交界第一帧速度反而弹回 0.80（实测 f50），
+                # 于是 f49→f50 出现 14.6 米/秒²。
+                _v_act = params[_a - 1, 82:85] - params[_a - 2, 82:85]
                 for _k in range(0, 2):
-                    _roots[_k] = _r0 + _vv0 * float(_k + 1)
+                    _roots[_k] = _r0 + _v_act * float(_k + 1)
             if _m >= 3:
                 for _k in range(1, 3):
                     _roots[_m - _k] = _r1 - _vv1 * float(_k)
@@ -407,6 +411,11 @@ def build(job, sb, verbose=True):
             params[_a:_b2, :85] = np.asarray(_Pt, dtype=np.float64)[:, :85]
             # 「拟合后还原预定根轨迹」实测更糟（缝 74.9）：根被按帧拽回，边界速度差更大 → 已撤回。
             # 真正的修法是不再做「分段拟合 + 拼接」，改成整段一次拟合（见文档 §53）。
+            if __import__("os").environ.get("HM_DEBUG_JUNC") == "1":
+                _ja, _ = joints_of_params(params[_a:_b2])
+                _err = np.linalg.norm(_ja[:, 0, :] - _roots, axis=1)
+                job.log("调试交界根误差：%s（毫米）"
+                        % " ".join("%.0f" % (v * 1000) for v in _err))
             job.log("交界：%d 帧关节空间过渡（支撑脚 %d，抬脚 %.2f 米），根位移已线性化"
                     % (_m, _tinfo["support"], _tinfo["lift_m"]))
         J, V = joints_of_params(params)
@@ -455,8 +464,27 @@ def build(job, sb, verbose=True):
                     _need = True
                 _shifts.append((_a, _bnd, -_min))
             if _need:
-                for (_a, _bnd, _dy) in _shifts:
-                    params[_a:_bnd, 83] += _dy
+                # 逐段贴地会在段/交界边界处留下「竖直台阶」（实测各段偏移最大差 4.1 厘米，
+                # 二阶差分把它算成 14–16 米/秒²）。这里把偏移做成逐帧线性过渡：
+                # 交界范围内由左段偏移线性过渡到右段偏移。
+                _T = len(params)
+                _shift_arr = np.zeros(_T)
+                _segs_only = [(a0, b0, d0) for (a0, b0, d0) in _shifts]
+                for (a0, b0, d0) in _segs_only:
+                    _shift_arr[a0:b0] = d0
+                # 交界处线性插值
+                _prev_end, _prev_dy = None, None
+                for (a0, b0, d0) in _segs_only:
+                    if _prev_end is not None and a0 > _prev_end:
+                        _m = a0 - _prev_end
+                        for _k in range(_m):
+                            _w = (_k + 1.0) / (_m + 1)
+                            _shift_arr[_prev_end + _k] = _prev_dy * (1 - _w) + d0 * _w
+                    _prev_end, _prev_dy = b0, d0
+                params[:, 83] += _shift_arr
+                J, V = joints_of_params(params)
+                job.log("竖向偏移逐帧线性过渡：最大 %.3f 米（避免段间竖直台阶）"
+                        % float(np.abs(_shift_arr).max()))
                 J, V = joints_of_params(params)
                 job.log("逐段贴地：按网格最低点把 %d 个片段/交界移到地面（最大位移 %.3f 米）"
                         % (len(_shifts), max(abs(d) for _a, _b, d in _shifts)))
