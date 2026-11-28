@@ -298,6 +298,39 @@ def build(job, sb, verbose=True):
     # 且并集质心在换脚帧会给出 3 厘米/帧的横向猛拽（实测换脚帧根速 1.15–1.46 m/s）。
     # 详见 docs/证据度量.md §49。保留 contact.pin_mesh 供离线实验，不在主链调用。
 
+    # 逐段贴地（网格最低点）：实测「走到挥手」的挥手段整段悬空 4.3 厘米、
+    # 交界悬空 3.6 厘米 —— 按关节对齐会漏掉脚掌比关节低的那几厘米。
+    # 只在平坦地形（profile 全 0 或空）时逐段对齐；有台阶时保持原来的「只用第一段对齐」。
+    try:
+        _tp = {int(x.get("at_segment", 0)): float(x.get("y", 0.0))
+               for x in ((sb.get("terrain") or {}).get("profile") or []) if isinstance(x, dict)}
+        _flat = all(abs(v) < 1e-6 for v in _tp.values()) if _tp else True
+        if _flat:
+            _ranges = []
+            _cur = 0
+            for _i, _b in enumerate(bounds):
+                _ranges.append((_cur, _cur + _b["frames"]))
+                _cur += _b["frames"]
+                if _i < len(junctions):
+                    _ranges.append((_cur, _cur + junctions[_i]["transition_frames"]))
+                    _cur += junctions[_i]["transition_frames"]
+            _need = False
+            _shifts = []
+            for (_a, _bnd) in _ranges:
+                _seg = V[_a:_bnd]
+                _min = float(_seg[..., 1].min())
+                if abs(_min) > 0.005:
+                    _need = True
+                _shifts.append((_a, _bnd, -_min))
+            if _need:
+                for (_a, _bnd, _dy) in _shifts:
+                    params[_a:_bnd, 83] += _dy
+                J, V = joints_of_params(params)
+                job.log("逐段贴地：按网格最低点把 %d 个片段/交界移到地面（最大位移 %.3f 米）"
+                        % (len(_shifts), max(abs(d) for _a, _b, d in _shifts)))
+    except Exception as _e:
+        job.log("逐段贴地跳过：%s" % str(_e)[:60])
+
     # 贴地校正：按「网格最低点」而不是关节最低点对齐地面。
     # 实测：按关节对齐时皮肤比关节低 2–5 厘米，每千帧有 768 帧顶点在地面下。
     # 但只能用第一段对齐：若用全局最低点，会把后面台阶段整体拉低/抬高，
