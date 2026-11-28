@@ -277,7 +277,20 @@ def blend_boundary(J, a, b, radius=2, taps=(0.25, 0.5, 0.25)):
     return out
 
 
-def make_transition_joints(Ja, Jb, n, lift_m=0.05, roots=None):
+def residual_series(J, k=5):
+    """关节轨迹减去时间低通，得到振荡部分（用于交界里延续上半身动作）。"""
+    J = np.asarray(J, dtype=np.float64)
+    if len(J) < 3:
+        return np.zeros_like(J)
+    ker = np.ones(k) / float(k)
+    smooth = np.empty_like(J)
+    for j in range(J.shape[1]):
+        for ax in range(3):
+            smooth[:, j, ax] = np.convolve(J[:, j, ax], ker, mode="same")
+    return J - smooth
+
+
+def make_transition_joints(Ja, Jb, n, lift_m=0.05, roots=None, resid_a=None, resid_b=None):
     """在关节空间生成交界过渡：钉住一只支撑脚，另一只抬起落地。
 
     Ja: 前段末帧 (22,3)；Jb: 后段首帧 (22,3)；n: 过渡帧数。
@@ -303,6 +316,16 @@ def make_transition_joints(Ja, Jb, n, lift_m=0.05, roots=None):
     for k in range(n):
         w = (k + 1.0) / (n + 1.0)                # 严格落在两端之间（末帧不等于后段首帧，否则重复帧→速度尖峰）
         pose = Ja * (1 - w) + Jb * w
+        if resid_a is not None and resid_b is not None:
+            # 线性插值姿态会把「相位相反」的上半身振荡抹平（实测 10–27° → 2.2°），
+            # 这里把两段各自的残差按权重叠加回去，上半身动作得以延续。
+            try:
+                _ra = resid_a[min(len(resid_a) - 1, k)]
+                _rb = resid_b[min(len(resid_b) - 1, k)]
+                _res = (1 - w) * _ra + w * _rb
+                pose[12:] = pose[12:] + _res[12:]
+            except Exception:
+                pass
         if roots is not None:
             # 先用给定的根位置（Hermite），再把整帧平移过去：
             # 这样「根」和「IK 解腿」用的是同一个根，不会出现根被覆盖、脚跟着漂的问题

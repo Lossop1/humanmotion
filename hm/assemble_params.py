@@ -512,8 +512,20 @@ def build(job, sb, verbose=True):
             # 默认 0.07：可复现 A/B 实测 0.05→摆动抬升 32 毫米、0.08→50 毫米，
             # 取 0.07 让抬升越过 40 毫米门槛（docs §56）
             _jl = float(__import__("os").environ.get("HM_JLIFT", "0.07"))
+            _res_a = _res_b = None
+            if __import__("os").environ.get("HM_JRESID", "1") == "1":
+                try:
+                    _tailA = np.asarray(pieces[_idx - 2])[-max(_m, 3):]
+                    _headB = np.asarray(pieces[_idx - 1])[:max(_m, 3)]
+                    _res_a = _C3.residual_series(_tailA)
+                    _res_b = _C3.residual_series(_headB)
+                    job.log("交界残差延续：前段末 %d 帧 / 后段首 %d 帧"
+                            % (len(_tailA), len(_headB)))
+                except Exception as _e19:
+                    job.log("残差延续跳过：%s" % str(_e19)[:80])
             _Jt, _tinfo = _C3.make_transition_joints(_Jj[_a - 1], _Jj[_b2], _m,
-                                                    lift_m=_jl, roots=_roots)
+                                                    lift_m=_jl, roots=_roots,
+                                                    resid_a=_res_a, resid_b=_res_b)
             # 交界头部交叉淡入：实测首帧与前一帧的关节位移 7.05 厘米/帧（正常 1–2），
             # 盲评也看到 f47→f48 的 6–8 像素突跳。这里把前两帧向 f(a-1) 拉回。
             if __import__("os").environ.get("HM_JXF", "1") == "1" and _m >= 4:
