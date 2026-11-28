@@ -345,7 +345,9 @@ def build(job, sb, verbose=True):
                 _dt_ = 0.05
                 _vp = np.linalg.norm(_Jj[_a - 1, 0, [0, 2]] - _Jj[_a - 2, 0, [0, 2]]) / _dt_
                 _vn = np.linalg.norm(_Jj[_b2, 0, [0, 2]] - _Jj[_b2 - 1, 0, [0, 2]]) / _dt_
-                _k = int(min(max(0, np.ceil(abs(_vp - _vn) / 0.25)), max(0, _a - 2)))
+                # 每帧只降 0.15 米/秒（≈3 米/秒²），把制动摊到 8–12 帧里：
+                # 之前 0.25/帧 只有 4–5 帧，二阶差分仍然把交界入口算成 12–27 米/秒²。
+                _k = int(min(max(0, np.ceil(abs(_vp - _vn) / 0.15)), 12, max(0, _a - 2)))
                 if _k >= 2:
                     _p_end = params[_a - 1, 82:85].copy()
                     _dirv = (params[_a - 1, 82:85] - params[_a - 2, 82:85])
