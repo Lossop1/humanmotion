@@ -277,9 +277,11 @@ def build(job, sb, verbose=True):
         n = CTL.junction_frames(gap, rate, cap=_cap_n)
         # junction_frames 会覆盖前面的计算结果：日志说「需要 10 帧」而实际仍 6 帧，
         # 就是因为这一行在后面把速度需求抹掉了。这里统一取大，上限 16 帧（0.8 秒）。
+        # 二阶差分峰值约为平均减速度的两倍 → 要通过「缝 ≤5 米/秒²」，
+        # 交界至少需要 8·|Δv| 帧（实测 1.07 米/秒 需要 ≥9 帧，8 帧时缝 7.7）。
         if _v_need and _v_need > n:
-            job.log("交界按下端根速取大：%d → %d 帧" % (n, min(_v_need, 16)))
-            n = int(min(_v_need, 16))
+            job.log("交界按下端根速取大：%d → %d 帧" % (n, min(_v_need, 18)))
+            n = int(min(_v_need, 18))
         w_in = joint_speed(pieces[i - 1], tail=True)
         w_out = joint_speed(pieces[i], tail=False)
         nom = max(gap / max(n, 1), 1e-6)
