@@ -270,9 +270,16 @@ def main():
         return
     if a.shape:
         d = ROOT / "outputs" / a.job
+        bj = json.loads((d / "assembled" / "bounds.json").read_text(encoding="utf-8"))
         J = np.load(d / "assembled" / "joints22.npy")
-        for k, v in shape_metrics(J).items():
-            print("  %-14s %s" % (k, v))
+        segs, juncs = ranges(bj)
+        wins = juncs if juncs else segs
+        for i, (aa, bb) in enumerate(wins):
+            tag = ("交界%d" % (i + 1)) if juncs else ("段%d" % (i + 1))
+            print("  == %s 帧 %d–%d（窗口内计算，避免把站起来算成下沉）" % (tag, aa, bb - 1))
+            sub = J[max(0, aa - 2):min(len(J), bb + 2)]
+            for k, v in shape_metrics(sub).items():
+                print("    %-16s %s" % (k, v))
         return
     if a.scan:
         d = ROOT / "outputs" / a.job
