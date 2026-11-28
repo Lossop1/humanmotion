@@ -158,9 +158,25 @@ def shape_metrics(J):
     hp = yaw(1, 2)
     twist = np.degrees(np.unwrap(np.radians(sh - hp)))
     out["M2_twist_deg"] = round(float(twist.max() - twist.min()), 1)
-    arms = max(float(h[:, k].max() - h[:, k].min()) for k in (0, 1))
-    out["M2_sole_range_m"] = round(arms, 3)
-    out["M3_drift_m"] = round(float(h.min(axis=1)[-1] - h.min(axis=1)[0]), 3)
+    # 肩髋反向：肩与髋相对扭转的皮尔逊相关为负 → 真的在反相摆（走路特征）
+    try:
+        rel = np.degrees(np.unwrap(np.radians(sh - hp)))
+        out["M2_counter_corr"] = round(float(np.corrcoef(sh, hp)[0, 1]), 2)
+        out["M2_rel_range_deg"] = round(float(rel.max() - rel.min()), 1)
+    except Exception:
+        out["M2_counter_corr"] = None
+    # 手臂摆动：腕（20/21）竖直方向行程
+    try:
+        wrists = J[:, [20, 21], 1]
+        out["M2_wrist_swing_m"] = round(float(np.max(wrists.max(axis=0) - wrists.min(axis=0))), 3)
+    except Exception:
+        out["M2_wrist_swing_m"] = None
+    # M3 改成「根/头高度漂移」（脚掌最低点恒定，测不出下沉）
+    out["M3_root_drift_m"] = round(float(J[-1, 0, 1] - J[0, 0, 1]), 3)
+    try:
+        out["M3_head_drift_m"] = round(float(J[-1, 17, 1] - J[0, 17, 1]), 3)
+    except Exception:
+        pass
     return out
 
 
