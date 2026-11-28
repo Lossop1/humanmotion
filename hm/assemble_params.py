@@ -379,6 +379,23 @@ def build(job, sb, verbose=True):
             _pp1 = _jj[_b2 + 1, 0, :] if _b2 + 1 < len(_jj) else _r1
             _r0 = _jj[_a - 1, 0, :].copy()
             _r1 = _jj[_b2, 0, :].copy()
+            # 不许倒着过交界：实测后段起点落在前段终点「后方」1.6 厘米
+            # （r0 z=2.942、r1 z=2.926），交界于是倒走再回拉，二阶差分记成 14.7 米/秒²。
+            # 这里把后段整体前移到与前段终点对齐，交界就不再倒退。
+            try:
+                _travel = _r0 - _jj[max(0, _a - 6), 0, :]
+                _dv = _r1 - _r0
+                _proj = float(np.dot(_travel[[0, 2]], _dv[[0, 2]]))
+                if _proj < 0:
+                    _shift = _r0 - _r1
+                    params[_b2:, 82] += _shift[0]
+                    params[_b2:, 84] += _shift[2]
+                    _r1 = _r0.copy()
+                    _jj, _ = joints_of_params(params)
+                    job.log("交界向前对齐：后段整体前移 (%.3f, %.3f) 米，避免倒走过交界"
+                            % (_shift[0], _shift[2]))
+            except Exception as _e10:
+                job.log("交界向前对齐跳过：%s" % str(_e10)[:50])
             _vv0 = np.clip(_r0 - _pp0, -0.10, 0.10)
             _vv1 = np.clip(_pp1 - _r1, -0.10, 0.10)
             _dd = float(_m + 1)
@@ -424,7 +441,7 @@ def build(job, sb, verbose=True):
             except Exception as _e9:
                 job.log("单调钳制跳过：%s" % str(_e9)[:40])
             if __import__("os").environ.get("HM_TRACE_Z") == "1":
-                job.log("ROOTS_Z " + " ".join("%d:%.4f" % (_a + k, _roots[k, 2]) for k in range(_m)))
+                job.log("ROOTS_Z r0=(%.3f,%.3f) r1=(%.3f,%.3f) " % (_r0[0], _r0[2], _r1[0], _r1[2]) + " ".join("%d:%.4f" % (_a + k, _roots[k, 2]) for k in range(_m)))
             _Jt, _tinfo = _C3.make_transition_joints(_Jj[_a - 1], _Jj[_b2], _m, roots=_roots)
             _, _Pt = FM.fit(_Jt, method="ik", refine=0, iters=2)
             params[_a:_b2, :85] = np.asarray(_Pt, dtype=np.float64)[:, :85]
