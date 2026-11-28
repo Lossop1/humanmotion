@@ -356,7 +356,10 @@ def build(job, sb, verbose=True):
                         # 并且**以 vn 收尾**（旧版把 a-1 留着不动，交界入口仍是 1.32 米/秒）
                         _pos = _p_end.copy()
                         for _j in range(1, _k):
-                            _frac = 1.0 - _j / float(_k)
+                            # 越靠近交界、速度越低：j=1 是 a-2（最靠近交界）→ 应接近 vn。
+                            # 之前写成 1 - j/k 是反的：结果交界前 3 帧在「加速」
+                            # （实测步长 0.0289→0.0412→0.0535），交界被迫过冲再回拉。
+                            _frac = _j / float(_k)
                             _v = _vn + (_vp - _vn) * max(0.0, _frac)
                             _pos = _pos.copy()
                             _pos[[0, 2]] -= _u * (_v * _dt_)
