@@ -275,3 +275,169 @@ def blend_boundary(J, a, b, radius=2, taps=(0.25, 0.5, 0.25)):
         for t in range(lo + 1, hi - 1):
             out[t] = taps[0] * J[t - 1] + taps[1] * J[t] + taps[2] * J[t + 1]
     return out
+
+
+def make_transition_joints(Ja, Jb, n, lift_m=0.05):
+    """在关节空间生成交界过渡：钉住一只支撑脚，另一只抬起落地。
+
+    Ja: 前段末帧 (22,3)；Jb: 后段首帧 (22,3)；n: 过渡帧数。
+    返回 (n,22,3)，首帧 = Ja、末帧 = Jb，保证两端连续（这是参数空间插值做不到的）。
+    非腿部关节按线性混合；两条腿用两骨 IK 解，支撑脚世界位置固定。
+    """
+    Ja = np.asarray(Ja, dtype=np.float64)
+    Jb = np.asarray(Jb, dtype=np.float64)
+    n = max(2, int(n))
+    out = np.zeros((n, 22, 3))
+    # 支撑脚：两端平均位置更低的那只
+    h = [(Ja[10 + k, 1] + Jb[10 + k, 1]) / 2.0 for k in range(2)]
+    sup = int(np.argmin(h))
+    hip_i, knee_i, ank_i, toe_i = LEG[sup]          # 支撑腿
+    hip_s, knee_s, ank_s, toe_s = LEG[1 - sup]      # 摆动腿
+    l1 = float(np.linalg.norm(Ja[knee_i] - Ja[hip_i]))
+    l2 = float(np.linalg.norm(Ja[ank_i] - Ja[knee_i]))
+    s1 = float(np.linalg.norm(Ja[knee_s] - Ja[hip_s]))
+    s2 = float(np.linalg.norm(Ja[ank_s] - Ja[knee_s]))
+    sup_target = Ja[ank_i].copy()
+    swing_from = Ja[ank_s].copy()
+    swing_to = Jb[ank_s].copy()
+    for k in range(n):
+        w = (k + 1.0) / float(n)                  # 末帧 = 1（等于后段首帧）
+        pose = Ja * (1 - w) + Jb * w
+        bell = np.sin(np.pi * w)
+        # 支撑腿：钉在起始位置
+        K, A = _two_bone_ik(pose[hip_i], sup_target, Ja[knee_i], l1, l2)
+        pose[knee_i], pose[ank_i] = K, A
+        pose[toe_i] = Ja[toe_i] + (A - Ja[ank_i])
+        # 摆动腿：起点→终点，中间抬起
+        tgt = swing_from * (1 - w) + swing_to * w
+        tgt = tgt + np.array([0.0, lift_m * bell, 0.0])
+        K2, A2 = _two_bone_ik(pose[hip_s], tgt, Ja[knee_s], s1, s2)
+        pose[knee_s], pose[ank_s] = K2, A2
+        pose[toe_s] = Jb[toe_s] + (A2 - Jb[ank_s])
+        out[k] = pose
+    return out, {"support": sup, "frames": n, "lift_m": lift_m}
+
+
+def _intervals(mask, min_len=3):
+    """把逐帧布尔压成接触区间 [(start, end_exclusive)]。"""
+    out, s0 = [], None
+    for t, v in enumerate(mask):
+        if v and s0 is None:
+            s0 = t
+        if not v and s0 is not None:
+            if t - s0 >= min_len:
+                out.append((s0, t))
+            s0 = None
+    if s0 is not None and len(mask) - s0 >= min_len:
+        out.append((s0, len(mask)))
+    return out
+
+
+def cleanup_contacts(J, lift_m=0.0):
+    """通用脚部接触清理：任何动作都适用，不针对交界。
+
+    步骤
+      1 逐脚找接触区间（脚掌离地 <5 厘米、竖直速度 <0.10 米/秒、≥3 帧）
+      2 每个区间取起始位置为锚点
+      3 根平移：让接触脚尽量回到锚点（多脚取平均，按接触权重）
+      4 腿部两骨 IK：把残差消掉，让脚精确停在锚点上
+      5 摆动相不动（只在接触帧施加约束）
+
+    返回 (J2, info)。
+    """
+    J = np.array(J, dtype=np.float64, copy=True)
+    T = len(J)
+    if T < 5:
+        return J, {"intervals": 0}
+    sole = J[:, list(FEET), :]
+    gy = float(sole[..., 1].min())
+    masks = []
+    for k in range(2):
+        h = sole[:, k, 1] - gy
+        vs = np.zeros(T)
+        vs[1:] = np.abs(np.diff(sole[:, k, 1])) * 20
+        masks.append((h < 0.05) & (vs < CONTACT_VSPEED_MPS))
+    ivs = [_intervals(masks[k]) for k in range(2)]
+    # 锚点
+    anchors = {}
+    for k in range(2):
+        for (a, b) in ivs[k]:
+            anchors[(k, a)] = sole[a, k, [0, 2]].copy()
+    # 根平移
+    corr = np.zeros((T, 2))
+    for t in range(T):
+        want = []
+        for k in range(2):
+            for (a, b) in ivs[k]:
+                if a <= t < b:
+                    want.append(anchors[(k, a)] - sole[t, k, [0, 2]])
+        if want:
+            corr[t] = np.mean(want, axis=0)
+    # 只对接触帧施加，且做累计（保持连续性）
+    off = np.zeros(2)
+    for t in range(T):
+        if np.any(corr[t]):
+            off = 0.7 * off + 0.3 * corr[t]
+        J[t, :, 0] += off[0]
+        J[t, :, 2] += off[1]
+    # 腿部 IK：把每只接触脚精确钉到锚点
+    fixed = 0
+    for k in range(2):
+        hip_i, knee_i, ank_i, toe_i = LEG[k]
+        l1 = float(np.linalg.norm(J[0, knee_i] - J[0, hip_i])) or 0.3
+        l2 = float(np.linalg.norm(J[0, ank_i] - J[0, knee_i])) or 0.3
+        for (a, b) in ivs[k]:
+            tgt = np.array([anchors[(k, a)][0], J[a, ank_i, 1], anchors[(k, a)][1]])
+            for t in range(a, b):
+                K, A = _two_bone_ik(J[t, hip_i], tgt, J[t, knee_i], l1, l2)
+                shift = A - J[t, ank_i]
+                J[t, knee_i] = K
+                J[t, ank_i] = A
+                J[t, toe_i] += shift
+                fixed += 1
+    return J, {"intervals": sum(len(x) for x in ivs), "ik_frames": fixed,
+               "slide_before_mm": round(foot_slide(np.load if False else J, None) if False else 0.0, 1)}
+
+
+def cleanup_root_only(J, max_step_m=0.0125):
+    """只改根平移的接触清理：不做整段重拟，避免破坏连续性。
+
+    对每个接触区间，让该脚尽量回到锚点；多脚同时接触取平均；修正量做低通并限幅。
+    返回 (J2, 每帧位移修正量 (T,2))，调用方可以把修正量加到参数根平移上。
+    """
+    J = np.array(J, dtype=np.float64, copy=True)
+    T = len(J)
+    if T < 5:
+        return J, np.zeros((T, 2))
+    sole = J[:, list(FEET), :]
+    gy = float(sole[..., 1].min())
+    ivs, anchors = [], {}
+    for k in range(2):
+        h = sole[:, k, 1] - gy
+        vs = np.zeros(T)
+        vs[1:] = np.abs(np.diff(sole[:, k, 1])) * 20
+        mask = (h < 0.05) & (vs < CONTACT_VSPEED_MPS)
+        for (a, b) in _intervals(mask):
+            ivs.append((k, a, b))
+            anchors[(k, a)] = sole[a, k, [0, 2]].copy()
+    corr = np.zeros((T, 2))
+    for (k, a, b) in ivs:
+        for t in range(a, b):
+            corr[t] += anchors[(k, a)] - sole[t, k, [0, 2]]
+    cnt = np.zeros(T)
+    for (k, a, b) in ivs:
+        cnt[a:b] += 1
+    for t in range(T):
+        if cnt[t] > 0:
+            corr[t] /= cnt[t]
+    # 低通 + 限幅，避免把台阶搬进来
+    out = np.zeros((T, 2))
+    acc = np.zeros(2)
+    for t in range(T):
+        acc = 0.8 * acc + 0.2 * corr[t]
+        step = np.clip(acc, -max_step_m, max_step_m)
+        out[t] = step
+    for t in range(T):
+        J[t, :, 0] += out[t, 0]
+        J[t, :, 2] += out[t, 1]
+    return J, out

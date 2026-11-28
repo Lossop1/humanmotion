@@ -60,7 +60,12 @@ def junction_stats(J, a, b):
         # 两脚都贴地、且两只脚都在动 —— 只有一脚动是正常迈步，不是平移
         if contact[t].all() and contact[t + 1].all() and bool((v[t] >= SLIDE_MOVING).all()):
             dsd += 1
-    p90 = [float(np.percentile(v[:, k], 90)) if len(v) else 0.0 for k in (0, 1)]
+    # 只看「该脚接地」的帧：迈步时摆动脚本就要快速移动，不能算滑移
+    p90 = []
+    for k in (0, 1):
+        sel = contact[:-1, k] & contact[1:, k]
+        vals = v[sel, k] if sel.any() else np.array([])
+        p90.append(float(np.percentile(vals, 90)) if len(vals) else 0.0)
 
     def seam_acc(t0):
         if t0 <= 0 or t0 + 1 >= len(J):
