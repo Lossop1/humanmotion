@@ -637,6 +637,30 @@ def build(job, sb, verbose=True):
                             _w = (_k + 1.0) / (_m + 1)
                             _shift_arr[_prev_end + _k] = _prev_dy * (1 - _w) + d0 * _w
                     _prev_end, _prev_dy = b0, d0
+                # 竖直台阶修：交界帧原本各自取自己的偏移，导致交界与前一帧差 6.7 厘米
+                # （docs §56.13：入口那一跳是竖直方向）。这里让交界内部线性过渡。
+                try:
+                    _cur2 = 0
+                    _rngs = []
+                    for _i2, _b2s in enumerate(bounds):
+                        _rngs.append((_cur2, _cur2 + _b2s["frames"], False))
+                        _cur2 += _b2s["frames"]
+                        if _i2 < len(junctions):
+                            _nj = junctions[_i2]["transition_frames"]
+                            _rngs.append((_cur2, _cur2 + _nj, True))
+                            _cur2 += _nj
+                    for _k2 in range(1, len(_rngs) - 1):
+                        a0, b0, is_j = _rngs[_k2]
+                        if not is_j:
+                            continue
+                        left = _shift_arr[_rngs[_k2 - 1][0]]
+                        right = _shift_arr[_rngs[_k2 + 1][0]] if _k2 + 1 < len(_rngs) else left
+                        _mm = b0 - a0
+                        for _t2 in range(_mm):
+                            _w2 = (_t2 + 1.0) / (_mm + 1.0)
+                            _shift_arr[a0 + _t2] = left * (1 - _w2) + right * _w2
+                except Exception as _e18:
+                    job.log("竖直过渡跳过：%s" % str(_e18)[:80])
                 params[:, 83] += _shift_arr
                 J, V = joints_of_params(params)
                 job.log("竖向偏移逐帧线性过渡：最大 %.3f 米（避免段间竖直台阶）"
