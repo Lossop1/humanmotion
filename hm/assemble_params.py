@@ -257,12 +257,14 @@ def build(job, sb, verbose=True):
             # 验收要求缝处加速度 ≤5 米/秒² → 每帧速度变化 ≤5×0.05=0.25 米/秒，
             # 但二阶差分对称，实际需要两倍长度才稳，所以乘 2 作为安全系数
             _v_req = int(np.ceil(2.0 * abs(_va - _vb) / 0.25))
+            _v_need = _v_req
             if _v_req > n:
                 job.log("交界加长：两端根速 %.2f→%.2f 米每秒，需要 %d 帧（原 %d）"
                         % (_va, _vb, _v_req, n))
                 n = int(min(60, _v_req))
         except Exception:
             pass
+        _v_need = locals().get("_v_need", 0)
         n = int(min(n, max(2, FJ.DEFAULT_TRANSITION)) if gap <= FJ.EXTREME_GAP_DEG else n)
         # 过渡本身也有速度上限：姿态差再大，也不能一两帧甩完
         # 过渡速度上限不应用固定值，而应与两侧运动速度对比：
@@ -273,6 +275,11 @@ def build(job, sb, verbose=True):
         # 帧数：交给 control.junction_frames（含速率比上限与 120 帧总上限，可单测）
         _cap_n = int(__import__("os").environ.get("HM_TRANS_CAP", "120"))
         n = CTL.junction_frames(gap, rate, cap=_cap_n)
+        # junction_frames 会覆盖前面的计算结果：日志说「需要 10 帧」而实际仍 6 帧，
+        # 就是因为这一行在后面把速度需求抹掉了。这里统一取大，上限 16 帧（0.8 秒）。
+        if _v_need and _v_need > n:
+            job.log("交界按下端根速取大：%d → %d 帧" % (n, min(_v_need, 16)))
+            n = int(min(_v_need, 16))
         w_in = joint_speed(pieces[i - 1], tail=True)
         w_out = joint_speed(pieces[i], tail=False)
         nom = max(gap / max(n, 1), 1e-6)
@@ -345,9 +352,13 @@ def build(job, sb, verbose=True):
                     _nv = np.linalg.norm(_dirv[[0, 2]])
                     if _nv > 1e-6:
                         _u = _dirv[[0, 2]] / _nv
+                        # 从 a-1 往前积分，速度按 k 段从 vp 降到 vn，
+                        # 并且**以 vn 收尾**（旧版把 a-1 留着不动，交界入口仍是 1.32 米/秒）
                         _pos = _p_end.copy()
                         for _j in range(1, _k):
-                            _v = _vn + (_vp - _vn) * (_j / float(_k))
+                            _frac = 1.0 - _j / float(_k)
+                            _v = _vn + (_vp - _vn) * max(0.0, _frac)
+                            _pos = _pos.copy()
                             _pos[[0, 2]] -= _u * (_v * _dt_)
                             params[_a - 1 - _j, 82:85] = _pos
                         job.log("减速斜坡：交界前 %d 帧把根速 %.2f→%.2f 米每秒" % (_k, _vp, _vn))
