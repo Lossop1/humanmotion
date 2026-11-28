@@ -397,7 +397,12 @@ def build(job, sb, verbose=True):
                     # 前移只保住后段内部速度，接缝处仍有台阶（实测出口 1.9→30.6）。
                     # 这里重写后段头 3 帧的根步长，从「交界末帧步长」线性过渡到它自己的步长。
                     try:
-                        _kk = min(3, len(params) - _b2 - 1)
+                        # 斜坡长度按速度差定：每帧最多改变 0.0125 米（≈5 米/秒²），
+                        # 否则出口仍是一次台阶（实测 26–33 米/秒²）
+                        _vp0 = params[_b2 - 1, 82:85] - params[_b2 - 2, 82:85]
+                        _vn0 = params[min(len(params) - 1, _b2 + 4), 82:85] - params[min(len(params) - 1, _b2 + 3), 82:85]
+                        _kneed = int(np.ceil(float(np.linalg.norm(_vn0 - _vp0)) / 0.0125)) if np.linalg.norm(_vn0 - _vp0) > 0 else 3
+                        _kk = min(max(3, _kneed), 10, len(params) - _b2 - 2)
                         if _kk >= 1 and _b2 >= 2:
                             _vlast = params[_b2 - 1, 82:85] - params[_b2 - 2, 82:85]
                             _steps = [params[_b2 + j, 82:85] - params[_b2 + j - 1, 82:85]
@@ -413,6 +418,14 @@ def build(job, sb, verbose=True):
                         job.log("出口速度斜坡跳过：%s" % str(_e11)[:50])
             except Exception as _e10:
                 job.log("交界向前对齐跳过：%s" % str(_e10)[:50])
+            # 出口速度斜坡：无条件执行（之前只在「后段需要前移」的分支里，
+            # 不前移时就不生效，出口台阶因此一直在）
+            try:
+                _ke = _C3.ramp_exit(params, _b2)
+                if _ke:
+                    job.log("出口速度斜坡：后段前 %d 帧根步长由交界末速过渡" % _ke)
+            except Exception as _e12:
+                job.log("出口速度斜坡跳过：%s" % str(_e12)[:50])
             _vv0 = np.clip(_r0 - _pp0, -0.10, 0.10)
             _vv1 = np.clip(_pp1 - _r1, -0.10, 0.10)
             _dd = float(_m + 1)

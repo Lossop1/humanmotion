@@ -452,3 +452,25 @@ def cleanup_root_only(J, max_step_m=0.0125):
         J[t, :, 0] += out[t, 0]
         J[t, :, 2] += out[t, 1]
     return J, out
+
+
+def ramp_exit(params, b2, k_max=10, step_max=0.0125):
+    """把后段头几帧的根步长从「交界末帧步长」过渡到它自己的步长。
+
+    之前这段逻辑被写在「后段需要前移」的分支里，段不前移时根本不执行，
+    所以出口台阶一直存在（实测 26–33 米/秒²）。这里独立出来，无条件调用。
+    """
+    T = len(params)
+    if b2 < 2 or b2 + 2 >= T:
+        return 0
+    vlast = params[b2 - 1, 82:85] - params[b2 - 2, 82:85]
+    vown = params[b2 + 3, 82:85] - params[b2 + 2, 82:85]
+    need = int(np.ceil(float(np.linalg.norm(vown - vlast)) / step_max))
+    kk = int(min(max(3, need), k_max, T - b2 - 2))
+    steps = [params[b2 + j, 82:85] - params[b2 + j - 1, 82:85] for j in range(kk + 1)]
+    pos = params[b2 - 1, 82:85].copy()
+    for j in range(kk):
+        w = (j + 1.0) / (kk + 1.0)
+        pos = pos + vlast * (1 - w) + steps[j] * w
+        params[b2 + j, 82:85] = pos
+    return kk
