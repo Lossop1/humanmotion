@@ -355,6 +355,10 @@ def build(job, sb, verbose=True):
                 # 每帧只降 0.15 米/秒（≈3 米/秒²），把制动摊到 8–12 帧里：
                 # 之前 0.25/帧 只有 4–5 帧，二阶差分仍然把交界入口算成 12–27 米/秒²。
                 _k = int(min(max(0, np.ceil(abs(_vp - _vn) / 0.15)), 12, max(0, _a - 2)))
+                # 前移一步时不该先把速度刹到 0：Hermite 要在 12 帧里覆盖 0.35 米，
+                # 起点速度越低，入口曲率越大（实测入口 6.7 厘米单帧跳变）。
+                if __import__("os").environ.get("HM_JTAPER", "1") == "0":
+                    _k = 0
                 if _k >= 2:
                     _p_end = params[_a - 1, 82:85].copy()
                     _dirv = (params[_a - 1, 82:85] - params[_a - 2, 82:85])
