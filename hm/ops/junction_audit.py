@@ -180,6 +180,46 @@ def shape_metrics(J):
     return out
 
 
+def gate_job(jid):
+    """六条判据一次过：三条平滑（DSD / 滑移 / 缝）+ 三条形态（M1 / M2 / M3）。"""
+    d = ROOT / "outputs" / jid
+    bj = json.loads((d / "assembled" / "bounds.json").read_text(encoding="utf-8"))
+    J = np.load(d / "assembled" / "joints22.npy")
+    _segs, juncs = ranges(bj)
+    ALL = []
+    for i, (a, b) in enumerate(juncs):
+        st = junction_stats(J, a, b)
+        sub = J[max(0, a - 2):min(len(J), b + 2)]
+        sm = shape_metrics(sub)
+        fails = []
+        if st["dsd"] != 0:
+            fails.append("DSD")
+        if max(st["p90"]) > P90_LIMIT:
+            fails.append("滑移")
+        if max(st["seam_in"], st["seam_out"]) > SEAM_LIMIT:
+            fails.append("缝")
+        m1 = [v for k, v in sm.items() if k.startswith("M1_")]
+        if not any(v["air"] >= 4 and v["landed"] and v["peak_ratio"] is not None
+                   and 0.30 <= v["peak_ratio"] <= 0.70 for v in m1):
+            fails.append("M1摆动次序")
+        if (sm.get("M2_rel_range_deg") or 0) < 8.0 or (sm.get("M2_wrist_swing_m") or 0) < 0.10:
+            fails.append("M2上半身")
+        if abs(sm.get("M3_root_drift_m") or 0) > 0.02:
+            fails.append("M3竖直漂移")
+        ALL.append(fails)
+        print("  交界%d %d–%d 帧%d  DSD=%d p90=%.0f/%.0f seam=%.1f/%.1f  "
+              "M1=%s M2=%.1f°/%.3f米 M3=%+.3f米  → %s" % (
+                  i + 1, a, b - 1, b - a, st["dsd"], st["p90"][0], st["p90"][1],
+                  st["seam_in"], st["seam_out"],
+                  ",".join("air%d/%.2f/%s" % (v["air"], v["peak_ratio"] or -1, v["landed"]) for v in m1),
+                  sm.get("M2_rel_range_deg") or 0, sm.get("M2_wrist_swing_m") or 0,
+                  sm.get("M3_root_drift_m") or 0,
+                  "PASS" if not fails else "FAIL " + ",".join(fails)))
+    ok = bool(ALL) and all(not f for f in ALL)
+    print("  总判：%s" % ("PASS（六条全过）" if ok else "FAIL"))
+    return ok
+
+
 def audit_job(jid):
     d = ROOT / "outputs" / jid
     bj = json.loads((d / "assembled" / "bounds.json").read_text(encoding="utf-8"))
@@ -261,12 +301,16 @@ def main():
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--scan", action="store_true", help="全片根加速度扫描（不限交界）")
     ap.add_argument("--shape", action="store_true", help="形态量（M1 摆动次序 / M2 上半身 / M3 漂移）")
+    ap.add_argument("--gate", action="store_true", help="六条判据一次过（三条平滑 + 三条形态）")
     a = ap.parse_args()
     if a.selftest:
         selftest()
         return
     if not a.job:
         print("  用法：python -m hm.ops.junction_audit --job <任务> ｜ --selftest")
+        return
+    if a.gate:
+        gate_job(a.job)
         return
     if a.shape:
         d = ROOT / "outputs" / a.job
