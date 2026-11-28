@@ -421,7 +421,7 @@ def build(job, sb, verbose=True):
             # 出口速度斜坡：无条件执行（之前只在「后段需要前移」的分支里，
             # 不前移时就不生效，出口台阶因此一直在）
             try:
-                _ke = _C3.ramp_exit(params, _b2)
+                _ke = _C3.ramp_exit(params, _b2) if _gate("HM_JEXIT", "0") else 0
                 if _ke:
                     job.log("出口速度斜坡：后段前 %d 帧根步长由交界末速过渡" % _ke)
             except Exception as _e12:
@@ -443,19 +443,25 @@ def build(job, sb, verbose=True):
             # 使进入后段的那一步速度就等于后段自己的速度。
             # 入口速度顺接（与出口对称）：交界头两帧按前段（已做减速斜坡的）速度前进，
             # 使交界第一步与前一帧速度一致，二阶差分不再把入口算成 10–17 米/秒²。
-            if _m >= 5:
+            _gate = lambda _n, _d: __import__("os").environ.get(_n, _d) == "1"
+            # 四个覆写互相打架会把一条光滑 Hermite 撕成锯齿（实测交界内速度
+            # 0.54→0.11→0.71→1.07，缝 22.9–35.6）。因此全部降级为实验开关，默认关：
+            # 交界内的根运动只由一条 Hermite 决定。
+            if _m >= 5 and _gate("HM_JENTRY", "0"):
                 # 入口速度必须取「已做斜坡的 params」里的实际步长：
                 # 之前用的 _vv0 来自斜坡前，交界第一帧速度反而弹回 0.80（实测 f50），
                 # 于是 f49→f50 出现 14.6 米/秒²。
                 _v_act = params[_a - 1, 82:85] - params[_a - 2, 82:85]
                 for _k in range(0, 2):
                     _roots[_k] = _r0 + _v_act * float(_k + 1)
-            if _m >= 3:
+            if _m >= 3 and _gate("HM_JTAIL", "0"):
                 for _k in range(1, 3):
                     _roots[_m - _k] = _r1 - _vv1 * float(_k)
             # 单调钳制：Hermite 在位移不足时会先冲过头再回拉（实测 f51 2.9481 → f52 2.9381），
             # 回拉那一步就是 14.6 米/秒² 的来源。这里按行进方向把根位置钳成单调。
             try:
+                if not _gate("HM_JCLAMP", "0"):
+                    raise RuntimeError("clamp off")
                 _d = (_r1 - _r0)
                 for _ax in (0, 2):
                     _sgn = np.sign(_d[_ax])
