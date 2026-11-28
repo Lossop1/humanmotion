@@ -552,6 +552,32 @@ def build(job, sb, verbose=True):
         except Exception as _e5:
             job.log("接触清理跳过：%s" % str(_e5)[:60])
 
+    # 交界头部二次淡入：这次拿「最终装配序列」的 f(a-1) 做目标（上次拿的是交界生成前的关节，
+    # 目标本身不等于前一帧，所以只把 7.05 厘米/帧降到 6.73）。
+    # 实测：开启后接地脚滑移 p90 从 0 涨到 49，缝只降 0.3 → 默认关闭
+    if __import__("os").environ.get("HM_JXF2", "0") == "1":
+        try:
+            _cur = 0
+            _rr = []
+            for _i, _b in enumerate(bounds):
+                _cur += _b["frames"]
+                if _i < len(junctions):
+                    _rr.append((_cur, _cur + junctions[_i]["transition_frames"]))
+                    _cur += junctions[_i]["transition_frames"]
+            for (_a2, _b3) in _rr:
+                if _a2 < 1 or _b3 > len(params):
+                    continue
+                _Jf, _ = joints_of_params(params)
+                _blend = _Jf.copy()
+                _blend[_a2] = 0.70 * _Jf[_a2 - 1] + 0.30 * _Jf[_a2]
+                _blend[_a2 + 1] = 0.40 * _Jf[_a2 - 1] + 0.60 * _Jf[_a2 + 1]
+                _, _P2 = FM.fit(_blend[_a2:_a2 + 2], method="ik", refine=0, iters=2)
+                params[_a2:_a2 + 2, :85] = np.asarray(_P2, dtype=np.float64)[:, :85]
+                job.log("交界头部二次淡入：帧 %d–%d 以最终序列 f%d 为目标" % (_a2, _a2 + 1, _a2 - 1))
+            J, V = joints_of_params(params)
+        except Exception as _e16:
+            job.log("二次淡入跳过：%s" % str(_e16)[:80])
+
     # 逐段贴地（网格最低点）：实测「走到挥手」的挥手段整段悬空 4.3 厘米、
     # 交界悬空 3.6 厘米 —— 按关节对齐会漏掉脚掌比关节低的那几厘米。
     # 只在平坦地形（profile 全 0 或空）时逐段对齐；有台阶时保持原来的「只用第一段对齐」。
