@@ -510,6 +510,16 @@ def build(job, sb, verbose=True):
             _jl = float(__import__("os").environ.get("HM_JLIFT", "0.07"))
             _Jt, _tinfo = _C3.make_transition_joints(_Jj[_a - 1], _Jj[_b2], _m,
                                                     lift_m=_jl, roots=_roots)
+            # 交界头部交叉淡入：实测首帧与前一帧的关节位移 7.05 厘米/帧（正常 1–2），
+            # 盲评也看到 f47→f48 的 6–8 像素突跳。这里把前两帧向 f(a-1) 拉回。
+            if __import__("os").environ.get("HM_JXF", "1") == "1" and _m >= 4:
+                try:
+                    _prev = _Jj[_a - 1]
+                    _Jt[0] = 0.70 * _prev + 0.30 * _Jt[0]
+                    _Jt[1] = 0.40 * _prev + 0.60 * _Jt[1]
+                    job.log("交界头部交叉淡入：前两帧已向 f%d 拉回" % (_a - 1))
+                except Exception as _e15:
+                    job.log("交界淡入跳过：%s" % str(_e15)[:80])
             _, _Pt = FM.fit(_Jt, method="ik", refine=0, iters=2)
             params[_a:_b2, :85] = np.asarray(_Pt, dtype=np.float64)[:, :85]
             # 「拟合后还原预定根轨迹」实测更糟（缝 74.9）：根被按帧拽回，边界速度差更大 → 已撤回。
