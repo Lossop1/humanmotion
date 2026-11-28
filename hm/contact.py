@@ -430,13 +430,20 @@ def cleanup_root_only(J, max_step_m=0.0125):
     for t in range(T):
         if cnt[t] > 0:
             corr[t] /= cnt[t]
-    # 低通 + 限幅，避免把台阶搬进来
+    # 边界斜坡：修正量在接触区间两端用 smoothstep 收到 0，
+    # 这样修正本身在缝处的速度为 0，不会把台阶搬进根轨迹（实测缝处 14–22 米/秒²）。
+    w = np.zeros(T)
+    k = 3
+    for (kk, a, b) in ivs:
+        m = b - a
+        r = min(k, max(1, m // 2))
+        for t in range(a, b):
+            d = min(t - a, b - 1 - t)
+            w[t] = max(w[t], min(1.0, d / float(r)))
+    w = w * w * (3 - 2 * w)                      # smoothstep
     out = np.zeros((T, 2))
-    acc = np.zeros(2)
     for t in range(T):
-        acc = 0.8 * acc + 0.2 * corr[t]
-        step = np.clip(acc, -max_step_m, max_step_m)
-        out[t] = step
+        out[t] = np.clip(corr[t] * w[t], -max_step_m, max_step_m)
     for t in range(T):
         J[t, :, 0] += out[t, 0]
         J[t, :, 2] += out[t, 1]

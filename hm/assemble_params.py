@@ -252,7 +252,9 @@ def build(job, sb, verbose=True):
             _pb = pieces[_idx - 1]
             _va = float(np.linalg.norm(_pa[-1, 0] - _pa[-2, 0]) * 20) if len(_pa) > 1 else 0.0
             _vb = float(np.linalg.norm(_pb[1, 0] - _pb[0, 0]) * 20) if len(_pb) > 1 else 0.0
-            _v_req = int(np.ceil(abs(_va - _vb) / 0.25))
+            # 验收要求缝处加速度 ≤5 米/秒² → 每帧速度变化 ≤5×0.05=0.25 米/秒，
+            # 但二阶差分对称，实际需要两倍长度才稳，所以乘 2 作为安全系数
+            _v_req = int(np.ceil(2.0 * abs(_va - _vb) / 0.25))
             if _v_req > n:
                 job.log("交界加长：两端根速 %.2f→%.2f 米每秒，需要 %d 帧（原 %d）"
                         % (_va, _vb, _v_req, n))
