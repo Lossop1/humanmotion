@@ -370,7 +370,7 @@ def build(job, sb, verbose=True):
                             params[_a - 1 - _j, 82:85] = _pos
                         job.log("减速斜坡：交界前 %d 帧把根速 %.2f→%.2f 米每秒" % (_k, _vp, _vn))
             except Exception as _e7:
-                job.log("减速斜坡跳过：%s" % str(_e7)[:50])
+                job.log("减速斜坡跳过：%s" % str(_e7)[:200])
 
             # 先定交界内每帧的根位置（三次 Hermite，两端速度匹配）
             _m = _b2 - _a
@@ -419,9 +419,9 @@ def build(job, sb, verbose=True):
                                 params[_b2 + j, 82:85] = _pos
                             job.log("出口速度斜坡：后段前 %d 帧根步长由交界末速过渡" % _kk)
                     except Exception as _e11:
-                        job.log("出口速度斜坡跳过：%s" % str(_e11)[:50])
+                        job.log("出口速度斜坡跳过：%s" % str(_e11)[:200])
             except Exception as _e10:
-                job.log("交界向前对齐跳过：%s" % str(_e10)[:50])
+                job.log("交界向前对齐跳过：%s" % str(_e10)[:200])
             # 出口速度斜坡：无条件执行（之前只在「后段需要前移」的分支里，
             # 不前移时就不生效，出口台阶因此一直在）
             try:
@@ -430,7 +430,7 @@ def build(job, sb, verbose=True):
                 if _ke:
                     job.log("出口速度斜坡：后段前 %d 帧根步长由交界末速过渡" % _ke)
             except Exception as _e12:
-                job.log("出口速度斜坡跳过：%s" % str(_e12)[:50])
+                job.log("出口速度斜坡跳过：%s" % str(_e12)[:200])
             _vv0 = np.clip(_r0 - _pp0, -0.10, 0.10)
             _vv1 = np.clip(_pp1 - _r1, -0.10, 0.10)
             _dd = float(_m + 1)
@@ -728,7 +728,7 @@ def run(job, sb):
         else:
             job.log("交付件帧数校验通过：%d 帧" % _n_asm)
     except Exception as _e13:
-        job.log("交付件帧数校验跳过：%s" % str(_e13)[:50])
+        job.log("交付件帧数校验跳过：%s" % str(_e13)[:200])
     job.log("A18 渲染完成（画质 %s）：%s" % (quality, rd / "final.mp4"))
     import os as _os2
     if _os2.environ.get("HM_DELIVER", "1") == "1":

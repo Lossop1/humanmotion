@@ -157,7 +157,12 @@ def run(sentence, k=6, job_id=None, max_rounds=MAX_ROUNDS):
         if not _p2.exists():
             raise SystemExit("HM_PLAN 指向的规划文件不存在：%s" % _p2)
         sb = _json2.loads(_p2.read_text(encoding="utf-8"))
-        job.log("规划复用：%s（%d 段，不再调用规划器）"
+        # 清掉上一轮的「已决策」痕迹：否则流水线认为这些段已通过、直接跳到装配，
+        # 候选目录为空 → build() 读 joints22.npy 报 FileNotFoundError（实测 plan_x）。
+        for _sg in sb.get("segments") or []:
+            for _k in ("selected", "segment_decision", "candidates", "attempts"):
+                _sg.pop(_k, None)
+        job.log("规划复用：%s（%d 段，不再调用规划器；已清空上轮候选决策）"
                 % (_p2.name, len(sb.get("segments") or [])))
     else:
         sb, warns = run_job.step_a02(job, sentence)
