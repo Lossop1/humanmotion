@@ -388,6 +388,12 @@ def build(job, sb, verbose=True):
                 _h11 = _t ** 3 - _t ** 2
                 _roots[_k] = (_h00 * _r0 + _h10 * _dd * _vv0
                               + _h01 * _r1 + _h11 * _dd * _vv1)
+            # 出口速度收尾：实测交界最后一帧步长是后段首帧的 4 倍（0.027 对 0.007 米），
+            # 二阶差分直接把它算成 8–10 米/秒²。这里把最后两帧改成「按后段速度倒退」，
+            # 使进入后段的那一步速度就等于后段自己的速度。
+            if _m >= 3:
+                for _k in range(1, 3):
+                    _roots[_m - _k] = _r1 - _vv1 * float(_k)
             _Jt, _tinfo = _C3.make_transition_joints(_Jj[_a - 1], _Jj[_b2], _m, roots=_roots)
             _, _Pt = FM.fit(_Jt, method="ik", refine=0, iters=2)
             params[_a:_b2, :85] = np.asarray(_Pt, dtype=np.float64)[:, :85]
