@@ -406,6 +406,23 @@ def build(job, sb, verbose=True):
             if _m >= 3:
                 for _k in range(1, 3):
                     _roots[_m - _k] = _r1 - _vv1 * float(_k)
+            # 单调钳制：Hermite 在位移不足时会先冲过头再回拉（实测 f51 2.9481 → f52 2.9381），
+            # 回拉那一步就是 14.6 米/秒² 的来源。这里按行进方向把根位置钳成单调。
+            try:
+                _d = (_r1 - _r0)
+                for _ax in (0, 2):
+                    _sgn = np.sign(_d[_ax])
+                    if abs(_d[_ax]) < 1e-6:
+                        continue
+                    _acc = _r0[_ax]
+                    for _k in range(_m):
+                        _want = _sgn * (_roots[_k, _ax] - _acc)
+                        if _want < 0:
+                            _roots[_k, _ax] = _acc
+                        else:
+                            _acc = _roots[_k, _ax]
+            except Exception as _e9:
+                job.log("单调钳制跳过：%s" % str(_e9)[:40])
             _Jt, _tinfo = _C3.make_transition_joints(_Jj[_a - 1], _Jj[_b2], _m, roots=_roots)
             _, _Pt = FM.fit(_Jt, method="ik", refine=0, iters=2)
             params[_a:_b2, :85] = np.asarray(_Pt, dtype=np.float64)[:, :85]
@@ -525,6 +542,21 @@ def build(job, sb, verbose=True):
     bj = {"job_id": getattr(job, "job_id", "?"), "segments": bounds,
           "junctions": junctions, "total_frames": total, "metrics": metrics,
           "fps": 20, "assembly": "param_space"}
+    if __import__("os").environ.get("HM_TRACE_Z") == "1":
+        try:
+            _jl = bj.get("junctions") or []
+            _cur = 0
+            for _i, _b in enumerate(bj["segments"]):
+                _cur += _b["frames"]
+                if _i < len(_jl):
+                    _n = _jl[_i]["transition_frames"]
+                    _lo, _hi = max(0, _cur - 3), min(len(params), _cur + _n + 2)
+                    job.log("TRACE_Z 交界%d [%d-%d]：%s" % (
+                        _i + 1, _cur, _cur + _n - 1,
+                        " ".join("%d:%.4f" % (t, params[t, 84]) for t in range(_lo, _hi))))
+                    _cur += _n
+        except Exception as _e8:
+            job.log("TRACE_Z 失败：%s" % str(_e8)[:60])
     return params, bj, V, J
 
 
