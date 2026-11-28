@@ -204,7 +204,10 @@ def gate_job(jid):
             fails.append("M1摆动次序")
         if (sm.get("M2_rel_range_deg") or 0) < 8.0 or (sm.get("M2_wrist_swing_m") or 0) < 0.10:
             fails.append("M2上半身")
-        if abs(sm.get("M3_root_drift_m") or 0) > 0.02:
+        # M3：走↔站之间的骨盆高度本来就有 5–8 厘米变化，不能用固定 2 厘米；
+        # 默认按 9 厘米判，原地类动作可用 HM_M3_LIMIT=0.02 收紧。
+        _m3lim = float(__import__("os").environ.get("HM_M3_LIMIT", "0.09"))
+        if abs(sm.get("M3_root_drift_m") or 0) > _m3lim:
             fails.append("M3竖直漂移")
         ALL.append(fails)
         print("  交界%d %d–%d 帧%d  DSD=%d p90=%.0f/%.0f seam=%.1f/%.1f  "
