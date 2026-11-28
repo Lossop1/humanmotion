@@ -107,6 +107,27 @@ def judge(st):
     return bad
 
 
+def scan_accel(J, bj, topn=5):
+    """全片根加速度扫描：交界之外也要查（实测段内出现过 221 米/秒²，而交界只有 1.6）。"""
+    p = J[:, 0, :]
+    acc = np.linalg.norm(p[2:] - 2 * p[1:-1] + p[:-2], axis=1) * FPS * FPS
+    segs, juncs = ranges(bj)
+    def where(t):
+        for i, (a, b) in enumerate(segs):
+            if a <= t < b:
+                return "段%d" % (i + 1)
+        for i, (a, b) in enumerate(juncs):
+            if a <= t < b:
+                return "交界%d" % (i + 1)
+        return "?"
+    order = np.argsort(acc)[::-1][:topn]
+    out = []
+    for k in order:
+        t = int(k) + 1
+        out.append((t, float(acc[k]), where(t)))
+    return out
+
+
 def audit_job(jid):
     d = ROOT / "outputs" / jid
     bj = json.loads((d / "assembled" / "bounds.json").read_text(encoding="utf-8"))
@@ -186,12 +207,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--job", default=None)
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--scan", action="store_true", help="全片根加速度扫描（不限交界）")
     a = ap.parse_args()
     if a.selftest:
         selftest()
         return
     if not a.job:
         print("  用法：python -m hm.ops.junction_audit --job <任务> ｜ --selftest")
+        return
+    if a.scan:
+        d = ROOT / "outputs" / a.job
+        bj = json.loads((d / "assembled" / "bounds.json").read_text(encoding="utf-8"))
+        J = np.load(d / "assembled" / "joints22.npy")
+        print("  全片根加速度 Top5（%s）" % a.job)
+        for t, v, w in scan_accel(J, bj):
+            print("    f%-4d %8.1f 米/秒²  %s" % (t, v, w))
         return
     for line in audit_job(a.job):
         print("  " + line)
