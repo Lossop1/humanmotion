@@ -275,6 +275,11 @@ def build(job, sb, verbose=True):
         # 帧数：交给 control.junction_frames（含速率比上限与 120 帧总上限，可单测）
         _cap_n = int(__import__("os").environ.get("HM_TRANS_CAP", "120"))
         n = CTL.junction_frames(gap, rate, cap=_cap_n)
+        # 交界最短帧数（实验开关）：前移一步需要更长的过渡，否则摆动相被压扁
+        _jf = int(__import__("os").environ.get("HM_JFRAMES", "0") or 0)
+        if _jf > n:
+            job.log("交界按 HM_JFRAMES 加长：%d → %d 帧" % (n, _jf))
+            n = _jf
         # junction_frames 会覆盖前面的计算结果：日志说「需要 10 帧」而实际仍 6 帧，
         # 就是因为这一行在后面把速度需求抹掉了。这里统一取大，上限 16 帧（0.8 秒）。
         # 二阶差分峰值约为平均减速度的两倍 → 要通过「缝 ≤5 米/秒²」，
