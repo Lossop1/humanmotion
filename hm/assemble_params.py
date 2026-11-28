@@ -329,12 +329,40 @@ def build(job, sb, verbose=True):
         for (_a, _b2) in _ranges:
             if _a < 1 or _b2 >= len(params):
                 continue
+            # 减速斜坡：交界前 k 帧把根速从 v0 线性降到 v_next，
+            # 这样制动发生在走路段末尾（有位移可用），而不是把 1.07 米/秒
+            # 硬塞进只有 0.04 米位移的交界里（实测交界第一帧速度 0.77→0.33）。
+            try:
+                _dt_ = 0.05
+                _vp = np.linalg.norm(_Jj[_a - 1, 0, [0, 2]] - _Jj[_a - 2, 0, [0, 2]]) / _dt_
+                _vn = np.linalg.norm(_Jj[_b2, 0, [0, 2]] - _Jj[_b2 - 1, 0, [0, 2]]) / _dt_
+                _k = int(min(max(0, np.ceil(abs(_vp - _vn) / 0.25)), max(0, _a - 2)))
+                if _k >= 2:
+                    _p_end = params[_a - 1, 82:85].copy()
+                    _dirv = (params[_a - 1, 82:85] - params[_a - 2, 82:85])
+                    _nv = np.linalg.norm(_dirv[[0, 2]])
+                    if _nv > 1e-6:
+                        _u = _dirv[[0, 2]] / _nv
+                        _pos = _p_end.copy()
+                        for _j in range(1, _k):
+                            _v = _vn + (_vp - _vn) * (_j / float(_k))
+                            _pos[[0, 2]] -= _u * (_v * _dt_)
+                            params[_a - 1 - _j, 82:85] = _pos
+                        job.log("减速斜坡：交界前 %d 帧把根速 %.2f→%.2f 米每秒" % (_k, _vp, _vn))
+            except Exception as _e7:
+                job.log("减速斜坡跳过：%s" % str(_e7)[:50])
+
             # 先定交界内每帧的根位置（三次 Hermite，两端速度匹配）
             _m = _b2 - _a
             _r0 = _Jj[_a - 1, 0, :].copy()
             _r1 = _Jj[_b2, 0, :].copy()
-            _pp0 = _Jj[_a - 2, 0, :] if _a >= 2 else _r0
-            _pp1 = _Jj[_b2 + 1, 0, :] if _b2 + 1 < len(_Jj) else _r1
+            # 速度必须从「已经做过减速斜坡的 params」里取，
+            # 否则 Hermite 会用斜坡前的 0.91 米/秒起步，与斜坡后的实际速度不一致（缝 9–13）
+            _jj, _ = joints_of_params(params)
+            _pp0 = _jj[_a - 2, 0, :] if _a >= 2 else _r0
+            _pp1 = _jj[_b2 + 1, 0, :] if _b2 + 1 < len(_jj) else _r1
+            _r0 = _jj[_a - 1, 0, :].copy()
+            _r1 = _jj[_b2, 0, :].copy()
             _vv0 = np.clip(_r0 - _pp0, -0.10, 0.10)
             _vv1 = np.clip(_pp1 - _r1, -0.10, 0.10)
             _dd = float(_m + 1)
