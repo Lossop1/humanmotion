@@ -68,7 +68,8 @@ def main():
     p.add_argument("--dir", default=None)
 
     p = sub.add_parser("report", help="文档/汇总类报告")
-    p.add_argument("kind", choices=["capability", "rules", "ledger", "test", "semantic"])
+    p.add_argument("kind", choices=["capability", "rules", "ledger", "test", "semantic",
+                                    "transition-review"])
     p.add_argument("--rest", nargs=argparse.REMAINDER)
 
     p = sub.add_parser("score", help="判定统计")
@@ -108,7 +109,8 @@ def main():
         return _run_op("coverage_report", [])
     if a.cmd == "report":
         table = {"capability": "capability_report", "rules": "rule_report", "ledger": "make_ledger",
-                 "test": "make_test_report", "semantic": "human_semantic_report"}
+                 "test": "make_test_report", "semantic": "human_semantic_report",
+                     "transition-review": "transition_review"}
         if a.kind == "capability":
             return _run_module("hm.capability_report", [])
         return _run_op(table[a.kind], a.rest or [])
